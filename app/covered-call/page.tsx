@@ -12,48 +12,62 @@ const formatCurrency = (value: number) =>
 
 const formatPercent = (value: number) => `${(value * 100).toFixed(2)}%`;
 
-const computeAnnualizedYield = ({
-  stockPrice,
-  premium,
+const computeAnnualizedReturn = ({
+  totalReturn,
   days,
 }: {
-  stockPrice: number;
-  premium: number;
+  totalReturn: number;
   days: number;
-}) => (days > 0 ? (premium / stockPrice) * (365 / days) : 0);
+}) => (days > 0 ? totalReturn * (365 / days) : 0);
 
 export default function CoveredCallPage() {
   const [formState, setFormState] = useState({
     stockPrice: 95,
     strikePrice: 105,
     premium: 2.75,
+    dividendPerShare: 0.25,
+    dividendsExpected: 1,
     shares: 100,
     days: 30,
   });
-  const lastSubmittedAnnualizedYield = useRef(
-    computeAnnualizedYield(formState),
+  const lastSubmittedAnnualizedReturn = useRef(
+    computeAnnualizedReturn({ totalReturn: 0, days: formState.days }),
   );
 
   const calculations = useMemo(() => {
-    const { stockPrice, strikePrice, premium, shares, days } = formState;
-    const premiumTotal = premium * shares;
-    const maxProfitPerShare = strikePrice - stockPrice + premium;
-    const maxProfitTotal = maxProfitPerShare * shares;
-    const breakevenPrice = stockPrice - premium;
-    const upsideCapValue = strikePrice - stockPrice;
-    const annualizedYield = computeAnnualizedYield({
+    const {
       stockPrice,
+      strikePrice,
       premium,
+      dividendPerShare,
+      dividendsExpected,
+      shares,
+      days,
+    } = formState;
+    const dividendPerShareTotal = dividendPerShare * dividendsExpected;
+    const premiumTotal = premium * shares;
+    const dividendsTotal = dividendPerShareTotal * shares;
+    const maxProfitPerShare =
+      strikePrice - stockPrice + premium + dividendPerShareTotal;
+    const maxProfitTotal = maxProfitPerShare * shares;
+    const breakevenPrice = stockPrice - premium - dividendPerShareTotal;
+    const upsideCapValue = strikePrice - stockPrice;
+    const totalReturn = stockPrice > 0 ? maxProfitPerShare / stockPrice : 0;
+    const annualizedReturn = computeAnnualizedReturn({
+      totalReturn,
       days,
     });
 
     return {
+      dividendPerShareTotal,
       premiumTotal,
+      dividendsTotal,
       maxProfitPerShare,
       maxProfitTotal,
       breakevenPrice,
       upsideCapValue,
-      annualizedYield,
+      totalReturn,
+      annualizedReturn,
     };
   }, [formState]);
 
@@ -67,11 +81,11 @@ export default function CoveredCallPage() {
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const previousYield = lastSubmittedAnnualizedYield.current;
-    const currentYield = calculations.annualizedYield;
-    lastSubmittedAnnualizedYield.current = currentYield;
+    const previousReturn = lastSubmittedAnnualizedReturn.current;
+    const currentReturn = calculations.annualizedReturn;
+    lastSubmittedAnnualizedReturn.current = currentReturn;
 
-    if (previousYield < 0.15 && currentYield >= 0.15) {
+    if (previousReturn < 0.15 && currentReturn >= 0.15) {
       if (typeof window === "undefined") {
         return;
       }
@@ -158,6 +172,34 @@ export default function CoveredCallPage() {
             </div>
           </div>
           <div className="field">
+            <label htmlFor="dividendPerShare">Dividend per share</label>
+            <div className="input-wrap">
+              <span>$</span>
+              <input
+                id="dividendPerShare"
+                name="dividendPerShare"
+                type="number"
+                step="0.01"
+                value={formState.dividendPerShare}
+                onChange={handleChange("dividendPerShare")}
+                required
+              />
+            </div>
+          </div>
+          <div className="field">
+            <label htmlFor="dividendsExpected">Dividends expected</label>
+            <input
+              id="dividendsExpected"
+              name="dividendsExpected"
+              type="number"
+              step="1"
+              min="0"
+              value={formState.dividendsExpected}
+              onChange={handleChange("dividendsExpected")}
+              required
+            />
+          </div>
+          <div className="field">
             <label htmlFor="shares">Shares owned</label>
             <input
               id="shares"
@@ -196,7 +238,10 @@ export default function CoveredCallPage() {
           <article className="result-card">
             <h3>Breakeven</h3>
             <p>{formatCurrency(calculations.breakevenPrice)}</p>
-            <span>{formatCurrency(formState.premium)} buffer per share</span>
+            <span>
+              {formatCurrency(calculations.dividendPerShareTotal)} dividends +{" "}
+              {formatCurrency(formState.premium)} premium per share
+            </span>
           </article>
           <article className="result-card">
             <h3>Upside cap</h3>
@@ -204,10 +249,21 @@ export default function CoveredCallPage() {
             <span>{formatCurrency(calculations.upsideCapValue)} above spot</span>
           </article>
           <article className="result-card">
-            <h3>Annualized yield</h3>
-            <p>{formatPercent(calculations.annualizedYield)}</p>
+            <h3>Total return</h3>
+            <p>{formatPercent(calculations.totalReturn)}</p>
             <span>
-              {formatCurrency(calculations.premiumTotal)} premium collected
+              {formatPercent(calculations.annualizedReturn)} annualized
+            </span>
+          </article>
+          <article className="result-card">
+            <h3>Total income</h3>
+            <p>
+              {formatCurrency(
+                calculations.premiumTotal + calculations.dividendsTotal,
+              )}
+            </p>
+            <span>
+              {formatCurrency(calculations.dividendsTotal)} dividends expected
             </span>
           </article>
         </div>
