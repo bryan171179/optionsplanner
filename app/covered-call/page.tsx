@@ -20,7 +20,25 @@ const computeAnnualizedReturn = ({
   days: number;
 }) => (days > 0 ? totalReturn * (365 / days) : 0);
 
+const formatDateInput = (date: Date) => date.toISOString().slice(0, 10);
+
+const calculateDaysUntilExpiration = (expirationDate: string) => {
+  const expiration = new Date(`${expirationDate}T00:00:00`);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  if (Number.isNaN(expiration.getTime())) {
+    return 0;
+  }
+
+  const diffMs = expiration.getTime() - today.getTime();
+  return Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+};
+
 export default function CoveredCallPage() {
+  const defaultExpiration = new Date();
+  defaultExpiration.setDate(defaultExpiration.getDate() + 30);
+
   const [formState, setFormState] = useState({
     stockPrice: 95,
     strikePrice: 105,
@@ -28,10 +46,13 @@ export default function CoveredCallPage() {
     dividendPerShare: 0.25,
     dividendsExpected: 1,
     shares: 100,
-    days: 30,
+    expirationDate: formatDateInput(defaultExpiration),
   });
   const lastSubmittedAnnualizedReturn = useRef(
-    computeAnnualizedReturn({ totalReturn: 0, days: formState.days }),
+    computeAnnualizedReturn({
+      totalReturn: 0,
+      days: calculateDaysUntilExpiration(formState.expirationDate),
+    }),
   );
 
   const calculations = useMemo(() => {
@@ -42,8 +63,9 @@ export default function CoveredCallPage() {
       dividendPerShare,
       dividendsExpected,
       shares,
-      days,
+      expirationDate,
     } = formState;
+    const daysUntilExpiration = calculateDaysUntilExpiration(expirationDate);
     const dividendPerShareTotal = dividendPerShare * dividendsExpected;
     const premiumTotal = premium * shares;
     const dividendsTotal = dividendPerShareTotal * shares;
@@ -55,10 +77,11 @@ export default function CoveredCallPage() {
     const totalReturn = stockPrice > 0 ? maxProfitPerShare / stockPrice : 0;
     const annualizedReturn = computeAnnualizedReturn({
       totalReturn,
-      days,
+      days: daysUntilExpiration,
     });
 
     return {
+      daysUntilExpiration,
       dividendPerShareTotal,
       premiumTotal,
       dividendsTotal,
@@ -102,6 +125,13 @@ export default function CoveredCallPage() {
         });
       }
     }
+  };
+
+  const handleDateChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setFormState((prev) => ({
+      ...prev,
+      expirationDate: event.target.value,
+    }));
   };
 
   return (
@@ -212,15 +242,18 @@ export default function CoveredCallPage() {
             />
           </div>
           <div className="field">
-            <label htmlFor="days">Days to expiration</label>
+            <label htmlFor="expirationDate">Expiration date</label>
             <input
-              id="days"
-              name="days"
-              type="number"
-              value={formState.days}
-              onChange={handleChange("days")}
+              id="expirationDate"
+              name="expirationDate"
+              type="date"
+              value={formState.expirationDate}
+              onChange={handleDateChange}
               required
             />
+            <p className="helper-text">
+              {calculations.daysUntilExpiration} days until expiration
+            </p>
           </div>
           <button className="primary" type="submit">
             Update plan
