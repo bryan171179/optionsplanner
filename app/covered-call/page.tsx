@@ -180,7 +180,7 @@ export default function CoveredCallPage() {
               required
             />
           </div>
-          <button className="primary" type="button" onClick={handleUpdatePlan}>
+          <button className="primary" type="submit">
             Update plan
           </button>
         </form>
