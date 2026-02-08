@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import confetti from "canvas-confetti";
+import { useMemo, useRef, useState } from "react";
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("en-US", {
@@ -11,6 +12,16 @@ const formatCurrency = (value: number) =>
 
 const formatPercent = (value: number) => `${(value * 100).toFixed(2)}%`;
 
+const computeAnnualizedYield = ({
+  stockPrice,
+  premium,
+  days,
+}: {
+  stockPrice: number;
+  premium: number;
+  days: number;
+}) => (days > 0 ? (premium / stockPrice) * (365 / days) : 0);
+
 export default function CoveredCallPage() {
   const [formState, setFormState] = useState({
     stockPrice: 95,
@@ -19,6 +30,9 @@ export default function CoveredCallPage() {
     shares: 100,
     days: 30,
   });
+  const lastSubmittedAnnualizedYield = useRef(
+    computeAnnualizedYield(formState),
+  );
 
   const calculations = useMemo(() => {
     const { stockPrice, strikePrice, premium, shares, days } = formState;
@@ -27,8 +41,11 @@ export default function CoveredCallPage() {
     const maxProfitTotal = maxProfitPerShare * shares;
     const breakevenPrice = stockPrice - premium;
     const upsideCapValue = strikePrice - stockPrice;
-    const annualizedYield =
-      days > 0 ? (premium / stockPrice) * (365 / days) : 0;
+    const annualizedYield = computeAnnualizedYield({
+      stockPrice,
+      premium,
+      days,
+    });
 
     return {
       premiumTotal,
@@ -47,6 +64,31 @@ export default function CoveredCallPage() {
         [field]: Number(event.target.value),
       }));
     };
+
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const previousYield = lastSubmittedAnnualizedYield.current;
+    const currentYield = calculations.annualizedYield;
+    lastSubmittedAnnualizedYield.current = currentYield;
+
+    if (previousYield < 0.15 && currentYield >= 0.15) {
+      if (typeof window === "undefined") {
+        return;
+      }
+
+      const prefersReducedMotion = window.matchMedia(
+        "(prefers-reduced-motion: reduce)",
+      ).matches;
+
+      if (!prefersReducedMotion) {
+        confetti({
+          particleCount: 120,
+          spread: 70,
+          origin: { y: 0.6 },
+        });
+      }
+    }
+  };
 
   return (
     <main className="page">
@@ -69,10 +111,7 @@ export default function CoveredCallPage() {
       </section>
 
       <section className="planner">
-        <form
-          className="planner-form"
-          onSubmit={(event) => event.preventDefault()}
-        >
+        <form className="planner-form" onSubmit={handleSubmit}>
           <div className="field">
             <label htmlFor="stockPrice">Current stock price</label>
             <div className="input-wrap">
