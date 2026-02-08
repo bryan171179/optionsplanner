@@ -65,7 +65,8 @@ export default function CoveredCallPage() {
       }));
     };
 
-  const handleUpdatePlan = () => {
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     const previousYield = lastSubmittedAnnualizedYield.current;
     const currentYield = calculations.annualizedYield;
     lastSubmittedAnnualizedYield.current = currentYield;
@@ -110,7 +111,7 @@ export default function CoveredCallPage() {
       </section>
 
       <section className="planner">
-        <form className="planner-form">
+        <form className="planner-form" onSubmit={handleSubmit}>
           <div className="field">
             <label htmlFor="stockPrice">Current stock price</label>
             <div className="input-wrap">
