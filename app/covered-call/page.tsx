@@ -43,6 +43,16 @@ const getDefaultFormState = () => {
 
 type FormState = ReturnType<typeof getDefaultFormState>;
 
+const getResetFormState = () => ({
+  stockPrice: "0",
+  strikePrice: "0",
+  premium: "0",
+  dividendPerShare: "0",
+  dividendsExpected: "0",
+  shares: "0",
+  expirationDate: formatDateInput(new Date()),
+});
+
 const calculateDaysUntilExpiration = (expirationDate: string) => {
   const expiration = new Date(`${expirationDate}T00:00:00`);
   const today = new Date();
@@ -167,11 +177,12 @@ export default function CoveredCallPage() {
   };
 
   const handleReset = () => {
+    const nextState = getResetFormState();
     if (typeof window !== "undefined") {
-      localStorage.removeItem(STORAGE_KEY);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(nextState));
     }
     skipNextSave.current = true;
-    setFormState(getDefaultFormState());
+    setFormState(nextState);
   };
 
   useEffect(() => {
