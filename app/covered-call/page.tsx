@@ -31,12 +31,12 @@ const getDefaultFormState = () => {
   defaultExpiration.setDate(defaultExpiration.getDate() + 30);
 
   return {
-    stockPrice: 95,
-    strikePrice: 105,
-    premium: 2.75,
-    dividendPerShare: 0.25,
-    dividendsExpected: 1,
-    shares: 100,
+    stockPrice: "95",
+    strikePrice: "105",
+    premium: "2.75",
+    dividendPerShare: "0.25",
+    dividendsExpected: "1",
+    shares: "100",
     expirationDate: formatDateInput(defaultExpiration),
   };
 };
@@ -81,22 +81,47 @@ export default function CoveredCallPage() {
       shares,
       expirationDate,
     } = formState;
+    const parsedStockPrice = Number.parseFloat(stockPrice);
+    const parsedStrikePrice = Number.parseFloat(strikePrice);
+    const parsedPremium = Number.parseFloat(premium);
+    const parsedDividendPerShare = Number.parseFloat(dividendPerShare);
+    const parsedDividendsExpected = Number.parseInt(dividendsExpected, 10);
+    const parsedShares = Number.parseInt(shares, 10);
+    const safeStockPrice = Number.isFinite(parsedStockPrice)
+      ? parsedStockPrice
+      : 0;
+    const safeStrikePrice = Number.isFinite(parsedStrikePrice)
+      ? parsedStrikePrice
+      : 0;
+    const safePremium = Number.isFinite(parsedPremium) ? parsedPremium : 0;
+    const safeDividendPerShare = Number.isFinite(parsedDividendPerShare)
+      ? parsedDividendPerShare
+      : 0;
+    const safeDividendsExpected = Number.isFinite(parsedDividendsExpected)
+      ? parsedDividendsExpected
+      : 0;
+    const safeShares = Number.isFinite(parsedShares) ? parsedShares : 0;
     const daysUntilExpiration = calculateDaysUntilExpiration(expirationDate);
-    const dividendPerShareTotal = dividendPerShare * dividendsExpected;
-    const grossCost = stockPrice * shares;
-    const premiumTotal = premium * shares;
-    const dividendsTotal = dividendPerShareTotal * shares;
+    const dividendPerShareTotal = safeDividendPerShare * safeDividendsExpected;
+    const grossCost = safeStockPrice * safeShares;
+    const premiumTotal = safePremium * safeShares;
+    const dividendsTotal = dividendPerShareTotal * safeShares;
     const netCost = grossCost - premiumTotal;
-    const netCostPerShare = stockPrice - premium;
+    const netCostPerShare = safeStockPrice - safePremium;
     const maxProfitPerShare =
-      strikePrice - stockPrice + premium + dividendPerShareTotal;
-    const maxProfitTotal = maxProfitPerShare * shares;
-    const breakevenPrice = stockPrice - premium - dividendPerShareTotal;
-    const upsideCapValue = strikePrice - stockPrice;
-    const totalReturn = stockPrice > 0 ? maxProfitPerShare / stockPrice : 0;
+      safeStrikePrice - safeStockPrice + safePremium + dividendPerShareTotal;
+    const maxProfitTotal = maxProfitPerShare * safeShares;
+    const breakevenPrice =
+      safeStockPrice - safePremium - dividendPerShareTotal;
+    const upsideCapValue = safeStrikePrice - safeStockPrice;
+    const totalReturn =
+      safeStockPrice > 0 ? maxProfitPerShare / safeStockPrice : 0;
     const downsideToBreakEvenPct =
-      stockPrice > 0 && Number.isFinite(breakevenPrice)
-        ? Math.max(0, ((stockPrice - breakevenPrice) / stockPrice) * 100)
+      safeStockPrice > 0 && Number.isFinite(breakevenPrice)
+        ? Math.max(
+            0,
+            ((safeStockPrice - breakevenPrice) / safeStockPrice) * 100,
+          )
         : 0;
     const annualizedReturn = computeAnnualizedReturn({
       totalReturn,
@@ -104,6 +129,11 @@ export default function CoveredCallPage() {
     });
 
     return {
+      safeStockPrice,
+      safeStrikePrice,
+      safePremium,
+      safeShares,
+      safeDividendsExpected,
       daysUntilExpiration,
       dividendPerShareTotal,
       grossCost,
@@ -123,11 +153,9 @@ export default function CoveredCallPage() {
 
   const handleChange = (field: keyof typeof formState) =>
     (event: React.ChangeEvent<HTMLInputElement>) => {
-      const value =
-        event.target.value === "" ? 0 : Number(event.target.value);
       setFormState((prev) => ({
         ...prev,
-        [field]: Number.isFinite(value) ? value : 0,
+        [field]: event.target.value,
       }));
     };
 
@@ -172,8 +200,10 @@ export default function CoveredCallPage() {
 
       numberFields.forEach((field) => {
         const value = parsed?.[field];
-        if (typeof value === "number" && Number.isFinite(value)) {
+        if (typeof value === "string") {
           nextState[field] = value;
+        } else if (typeof value === "number" && Number.isFinite(value)) {
+          nextState[field] = String(value);
         }
       });
 
@@ -399,7 +429,7 @@ export default function CoveredCallPage() {
             <h3>Gross position cost</h3>
             <p>{formatCurrency(calculations.grossCost)}</p>
             <span>
-              {formatCurrency(formState.stockPrice)} per share
+              {formatCurrency(calculations.safeStockPrice)} per share
             </span>
           </article>
           <article className="result-card">
@@ -411,7 +441,7 @@ export default function CoveredCallPage() {
           </article>
           <article className="result-card">
             <h3>Upside cap</h3>
-            <p>{formatCurrency(formState.strikePrice)}</p>
+            <p>{formatCurrency(calculations.safeStrikePrice)}</p>
             <span>{formatCurrency(calculations.upsideCapValue)} above spot</span>
           </article>
           <article className="result-card">
