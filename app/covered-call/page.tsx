@@ -1,7 +1,7 @@
 "use client";
 
 import confetti from "canvas-confetti";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("en-US", {
@@ -54,6 +54,7 @@ export default function CoveredCallPage() {
       days: calculateDaysUntilExpiration(formState.expirationDate),
     }),
   );
+  const hasMounted = useRef(false);
 
   const calculations = useMemo(() => {
     const {
@@ -67,8 +68,11 @@ export default function CoveredCallPage() {
     } = formState;
     const daysUntilExpiration = calculateDaysUntilExpiration(expirationDate);
     const dividendPerShareTotal = dividendPerShare * dividendsExpected;
+    const grossCost = stockPrice * shares;
     const premiumTotal = premium * shares;
     const dividendsTotal = dividendPerShareTotal * shares;
+    const netCost = grossCost - premiumTotal;
+    const netCostPerShare = stockPrice - premium;
     const maxProfitPerShare =
       strikePrice - stockPrice + premium + dividendPerShareTotal;
     const maxProfitTotal = maxProfitPerShare * shares;
@@ -83,6 +87,9 @@ export default function CoveredCallPage() {
     return {
       daysUntilExpiration,
       dividendPerShareTotal,
+      grossCost,
+      netCost,
+      netCostPerShare,
       premiumTotal,
       dividendsTotal,
       maxProfitPerShare,
@@ -96,17 +103,35 @@ export default function CoveredCallPage() {
 
   const handleChange = (field: keyof typeof formState) =>
     (event: React.ChangeEvent<HTMLInputElement>) => {
+      const value =
+        event.target.value === "" ? 0 : Number(event.target.value);
       setFormState((prev) => ({
         ...prev,
-        [field]: Number(event.target.value),
+        [field]: Number.isFinite(value) ? value : 0,
       }));
     };
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const previousReturn = lastSubmittedAnnualizedReturn.current;
+  const handleDateChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setFormState((prev) => ({
+      ...prev,
+      expirationDate: event.target.value,
+    }));
+  };
+
+  useEffect(() => {
     const currentReturn = calculations.annualizedReturn;
+
+    if (!Number.isFinite(currentReturn)) {
+      return;
+    }
+
+    const previousReturn = lastSubmittedAnnualizedReturn.current;
     lastSubmittedAnnualizedReturn.current = currentReturn;
+
+    if (!hasMounted.current) {
+      hasMounted.current = true;
+      return;
+    }
 
     if (previousReturn < 0.15 && currentReturn >= 0.15) {
       if (typeof window === "undefined") {
@@ -125,14 +150,7 @@ export default function CoveredCallPage() {
         });
       }
     }
-  };
-
-  const handleDateChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setFormState((prev) => ({
-      ...prev,
-      expirationDate: event.target.value,
-    }));
-  };
+  }, [calculations.annualizedReturn]);
 
   return (
     <main className="page">
@@ -155,7 +173,7 @@ export default function CoveredCallPage() {
       </section>
 
       <section className="planner">
-        <form className="planner-form" onSubmit={handleSubmit}>
+        <form className="planner-form">
           <div className="field">
             <label htmlFor="stockPrice">Current stock price</label>
             <div className="input-wrap">
@@ -255,9 +273,6 @@ export default function CoveredCallPage() {
               {calculations.daysUntilExpiration} days until expiration
             </p>
           </div>
-          <button className="primary" type="submit">
-            Update plan
-          </button>
         </form>
 
         <div className="results" aria-live="polite">
@@ -274,6 +289,20 @@ export default function CoveredCallPage() {
             <span>
               {formatCurrency(calculations.dividendPerShareTotal)} dividends +{" "}
               {formatCurrency(formState.premium)} premium per share
+            </span>
+          </article>
+          <article className="result-card">
+            <h3>Gross position cost</h3>
+            <p>{formatCurrency(calculations.grossCost)}</p>
+            <span>
+              {formatCurrency(formState.stockPrice)} per share
+            </span>
+          </article>
+          <article className="result-card">
+            <h3>Net position cost</h3>
+            <p>{formatCurrency(calculations.netCost)}</p>
+            <span>
+              {formatCurrency(calculations.netCostPerShare)} per share
             </span>
           </article>
           <article className="result-card">
