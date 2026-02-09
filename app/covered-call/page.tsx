@@ -1,7 +1,7 @@
 "use client";
 
 import confetti from "canvas-confetti";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("en-US", {
@@ -11,67 +11,230 @@ const formatCurrency = (value: number) =>
   }).format(value);
 
 const formatPercent = (value: number) => `${(value * 100).toFixed(2)}%`;
+const formatPercentValue = (value: number) => `${value.toFixed(2)}%`;
 
-const computeAnnualizedYield = ({
-  stockPrice,
-  premium,
+const STORAGE_KEY = "optionsplanner.coveredCall.inputs.v1";
+const STORAGE_DEBOUNCE_MS = 350;
+
+const computeAnnualizedReturn = ({
+  totalReturn,
   days,
 }: {
-  stockPrice: number;
-  premium: number;
+  totalReturn: number;
   days: number;
-}) => (days > 0 ? (premium / stockPrice) * (365 / days) : 0);
+}) => (days > 0 ? totalReturn * (365 / days) : 0);
 
-export default function CoveredCallPage() {
-  const [formState, setFormState] = useState({
+const formatDateInput = (date: Date) => date.toISOString().slice(0, 10);
+
+const getDefaultFormState = () => {
+  const defaultExpiration = new Date();
+  defaultExpiration.setDate(defaultExpiration.getDate() + 30);
+
+  return {
     stockPrice: 95,
     strikePrice: 105,
     premium: 2.75,
+    dividendPerShare: 0.25,
+    dividendsExpected: 1,
     shares: 100,
-    days: 30,
-  });
-  const lastSubmittedAnnualizedYield = useRef(
-    computeAnnualizedYield(formState),
+    expirationDate: formatDateInput(defaultExpiration),
+  };
+};
+
+type FormState = ReturnType<typeof getDefaultFormState>;
+
+const calculateDaysUntilExpiration = (expirationDate: string) => {
+  const expiration = new Date(`${expirationDate}T00:00:00`);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  if (Number.isNaN(expiration.getTime())) {
+    return 0;
+  }
+
+  const diffMs = expiration.getTime() - today.getTime();
+  return Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+};
+
+export default function CoveredCallPage() {
+  const [formState, setFormState] = useState<FormState>(() =>
+    getDefaultFormState(),
   );
+  const lastSubmittedAnnualizedReturn = useRef(
+    computeAnnualizedReturn({
+      totalReturn: 0,
+      days: calculateDaysUntilExpiration(formState.expirationDate),
+    }),
+  );
+  const hasHydrated = useRef(false);
+  const hasConfettiMounted = useRef(false);
+  const skipNextSave = useRef(false);
+  const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const calculations = useMemo(() => {
-    const { stockPrice, strikePrice, premium, shares, days } = formState;
-    const premiumTotal = premium * shares;
-    const maxProfitPerShare = strikePrice - stockPrice + premium;
-    const maxProfitTotal = maxProfitPerShare * shares;
-    const breakevenPrice = stockPrice - premium;
-    const upsideCapValue = strikePrice - stockPrice;
-    const annualizedYield = computeAnnualizedYield({
+    const {
       stockPrice,
+      strikePrice,
       premium,
-      days,
+      dividendPerShare,
+      dividendsExpected,
+      shares,
+      expirationDate,
+    } = formState;
+    const daysUntilExpiration = calculateDaysUntilExpiration(expirationDate);
+    const dividendPerShareTotal = dividendPerShare * dividendsExpected;
+    const grossCost = stockPrice * shares;
+    const premiumTotal = premium * shares;
+    const dividendsTotal = dividendPerShareTotal * shares;
+    const netCost = grossCost - premiumTotal;
+    const netCostPerShare = stockPrice - premium;
+    const maxProfitPerShare =
+      strikePrice - stockPrice + premium + dividendPerShareTotal;
+    const maxProfitTotal = maxProfitPerShare * shares;
+    const breakevenPrice = stockPrice - premium - dividendPerShareTotal;
+    const upsideCapValue = strikePrice - stockPrice;
+    const totalReturn = stockPrice > 0 ? maxProfitPerShare / stockPrice : 0;
+    const downsideToBreakEvenPct =
+      stockPrice > 0 && Number.isFinite(breakevenPrice)
+        ? Math.max(0, ((stockPrice - breakevenPrice) / stockPrice) * 100)
+        : 0;
+    const annualizedReturn = computeAnnualizedReturn({
+      totalReturn,
+      days: daysUntilExpiration,
     });
 
     return {
+      daysUntilExpiration,
+      dividendPerShareTotal,
+      grossCost,
+      netCost,
+      netCostPerShare,
       premiumTotal,
+      dividendsTotal,
       maxProfitPerShare,
       maxProfitTotal,
       breakevenPrice,
+      downsideToBreakEvenPct,
       upsideCapValue,
-      annualizedYield,
+      totalReturn,
+      annualizedReturn,
     };
   }, [formState]);
 
   const handleChange = (field: keyof typeof formState) =>
     (event: React.ChangeEvent<HTMLInputElement>) => {
+      const value =
+        event.target.value === "" ? 0 : Number(event.target.value);
       setFormState((prev) => ({
         ...prev,
-        [field]: Number(event.target.value),
+        [field]: Number.isFinite(value) ? value : 0,
       }));
     };
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const previousYield = lastSubmittedAnnualizedYield.current;
-    const currentYield = calculations.annualizedYield;
-    lastSubmittedAnnualizedYield.current = currentYield;
+  const handleDateChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setFormState((prev) => ({
+      ...prev,
+      expirationDate: event.target.value,
+    }));
+  };
 
-    if (previousYield < 0.15 && currentYield >= 0.15) {
+  const handleReset = () => {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem(STORAGE_KEY);
+    }
+    skipNextSave.current = true;
+    setFormState(getDefaultFormState());
+  };
+
+  useEffect(() => {
+    const defaults = getDefaultFormState();
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) {
+      hasHydrated.current = true;
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(stored);
+      const nextState: FormState = { ...defaults };
+      const numberFields: Array<keyof Omit<FormState, "expirationDate">> = [
+        "stockPrice",
+        "strikePrice",
+        "premium",
+        "dividendPerShare",
+        "dividendsExpected",
+        "shares",
+      ];
+
+      numberFields.forEach((field) => {
+        const value = parsed?.[field];
+        if (typeof value === "number" && Number.isFinite(value)) {
+          nextState[field] = value;
+        }
+      });
+
+      if (
+        typeof parsed?.expirationDate === "string" &&
+        !Number.isNaN(
+          new Date(`${parsed.expirationDate}T00:00:00`).getTime(),
+        )
+      ) {
+        nextState.expirationDate = parsed.expirationDate;
+      }
+
+      setFormState(nextState);
+    } catch {
+      setFormState(defaults);
+    } finally {
+      hasHydrated.current = true;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!hasHydrated.current) {
+      return;
+    }
+
+    if (skipNextSave.current) {
+      skipNextSave.current = false;
+      return;
+    }
+
+    if (saveTimeout.current) {
+      clearTimeout(saveTimeout.current);
+    }
+
+    saveTimeout.current = setTimeout(() => {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(formState));
+    }, STORAGE_DEBOUNCE_MS);
+
+    return () => {
+      if (saveTimeout.current) {
+        clearTimeout(saveTimeout.current);
+      }
+    };
+  }, [formState]);
+
+  useEffect(() => {
+    const currentReturn = calculations.annualizedReturn;
+
+    if (!Number.isFinite(currentReturn)) {
+      return;
+    }
+
+    const previousReturn = lastSubmittedAnnualizedReturn.current;
+    lastSubmittedAnnualizedReturn.current = currentReturn;
+
+    if (!hasConfettiMounted.current) {
+      hasConfettiMounted.current = true;
+      return;
+    }
+
+    if (previousReturn < 0.15 && currentReturn >= 0.15) {
       if (typeof window === "undefined") {
         return;
       }
@@ -88,7 +251,7 @@ export default function CoveredCallPage() {
         });
       }
     }
-  };
+  }, [calculations.annualizedReturn]);
 
   return (
     <main className="page">
@@ -111,7 +274,7 @@ export default function CoveredCallPage() {
       </section>
 
       <section className="planner">
-        <form className="planner-form" onSubmit={handleSubmit}>
+        <form className="planner-form">
           <div className="field">
             <label htmlFor="stockPrice">Current stock price</label>
             <div className="input-wrap">
@@ -158,6 +321,34 @@ export default function CoveredCallPage() {
             </div>
           </div>
           <div className="field">
+            <label htmlFor="dividendPerShare">Dividend per share</label>
+            <div className="input-wrap">
+              <span>$</span>
+              <input
+                id="dividendPerShare"
+                name="dividendPerShare"
+                type="number"
+                step="0.01"
+                value={formState.dividendPerShare}
+                onChange={handleChange("dividendPerShare")}
+                required
+              />
+            </div>
+          </div>
+          <div className="field">
+            <label htmlFor="dividendsExpected">Dividends expected</label>
+            <input
+              id="dividendsExpected"
+              name="dividendsExpected"
+              type="number"
+              step="1"
+              min="0"
+              value={formState.dividendsExpected}
+              onChange={handleChange("dividendsExpected")}
+              required
+            />
+          </div>
+          <div className="field">
             <label htmlFor="shares">Shares owned</label>
             <input
               id="shares"
@@ -170,20 +361,23 @@ export default function CoveredCallPage() {
             />
           </div>
           <div className="field">
-            <label htmlFor="days">Days to expiration</label>
+            <label htmlFor="expirationDate">Expiration date</label>
             <input
-              id="days"
-              name="days"
-              type="number"
-              value={formState.days}
-              onChange={handleChange("days")}
+              id="expirationDate"
+              name="expirationDate"
+              type="date"
+              value={formState.expirationDate}
+              onChange={handleDateChange}
               required
             />
+            <p className="helper-text">
+              {calculations.daysUntilExpiration} days until expiration
+            </p>
           </div>
-          <button className="primary" type="submit">
-            Update plan
-          </button>
         </form>
+        <button className="text-button" type="button" onClick={handleReset}>
+          Reset
+        </button>
 
         <div className="results" aria-live="polite">
           <article className="result-card">
@@ -194,9 +388,26 @@ export default function CoveredCallPage() {
             </span>
           </article>
           <article className="result-card">
-            <h3>Breakeven</h3>
+            <h3>Break even</h3>
             <p>{formatCurrency(calculations.breakevenPrice)}</p>
-            <span>{formatCurrency(formState.premium)} buffer per share</span>
+            <span>
+              downside to break even:{" "}
+              {formatPercentValue(calculations.downsideToBreakEvenPct)}
+            </span>
+          </article>
+          <article className="result-card">
+            <h3>Gross position cost</h3>
+            <p>{formatCurrency(calculations.grossCost)}</p>
+            <span>
+              {formatCurrency(formState.stockPrice)} per share
+            </span>
+          </article>
+          <article className="result-card">
+            <h3>Net position cost</h3>
+            <p>{formatCurrency(calculations.netCost)}</p>
+            <span>
+              {formatCurrency(calculations.netCostPerShare)} per share
+            </span>
           </article>
           <article className="result-card">
             <h3>Upside cap</h3>
@@ -204,10 +415,21 @@ export default function CoveredCallPage() {
             <span>{formatCurrency(calculations.upsideCapValue)} above spot</span>
           </article>
           <article className="result-card">
-            <h3>Annualized yield</h3>
-            <p>{formatPercent(calculations.annualizedYield)}</p>
+            <h3>Total return</h3>
+            <p>{formatPercent(calculations.totalReturn)}</p>
             <span>
-              {formatCurrency(calculations.premiumTotal)} premium collected
+              {formatPercent(calculations.annualizedReturn)} annualized
+            </span>
+          </article>
+          <article className="result-card">
+            <h3>Total income</h3>
+            <p>
+              {formatCurrency(
+                calculations.premiumTotal + calculations.dividendsTotal,
+              )}
+            </p>
+            <span>
+              {formatCurrency(calculations.dividendsTotal)} dividends expected
             </span>
           </article>
         </div>
