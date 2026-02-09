@@ -13,6 +13,9 @@ const formatCurrency = (value: number) =>
 const formatPercent = (value: number) => `${(value * 100).toFixed(2)}%`;
 const formatPercentValue = (value: number) => `${value.toFixed(2)}%`;
 
+const STORAGE_KEY = "optionsplanner.coveredCall.inputs.v1";
+const STORAGE_DEBOUNCE_MS = 350;
+
 const computeAnnualizedReturn = ({
   totalReturn,
   days,
@@ -22,6 +25,23 @@ const computeAnnualizedReturn = ({
 }) => (days > 0 ? totalReturn * (365 / days) : 0);
 
 const formatDateInput = (date: Date) => date.toISOString().slice(0, 10);
+
+const getDefaultFormState = () => {
+  const defaultExpiration = new Date();
+  defaultExpiration.setDate(defaultExpiration.getDate() + 30);
+
+  return {
+    stockPrice: 95,
+    strikePrice: 105,
+    premium: 2.75,
+    dividendPerShare: 0.25,
+    dividendsExpected: 1,
+    shares: 100,
+    expirationDate: formatDateInput(defaultExpiration),
+  };
+};
+
+type FormState = ReturnType<typeof getDefaultFormState>;
 
 const calculateDaysUntilExpiration = (expirationDate: string) => {
   const expiration = new Date(`${expirationDate}T00:00:00`);
@@ -37,25 +57,19 @@ const calculateDaysUntilExpiration = (expirationDate: string) => {
 };
 
 export default function CoveredCallPage() {
-  const defaultExpiration = new Date();
-  defaultExpiration.setDate(defaultExpiration.getDate() + 30);
-
-  const [formState, setFormState] = useState({
-    stockPrice: 95,
-    strikePrice: 105,
-    premium: 2.75,
-    dividendPerShare: 0.25,
-    dividendsExpected: 1,
-    shares: 100,
-    expirationDate: formatDateInput(defaultExpiration),
-  });
+  const [formState, setFormState] = useState<FormState>(() =>
+    getDefaultFormState(),
+  );
   const lastSubmittedAnnualizedReturn = useRef(
     computeAnnualizedReturn({
       totalReturn: 0,
       days: calculateDaysUntilExpiration(formState.expirationDate),
     }),
   );
-  const hasMounted = useRef(false);
+  const hasHydrated = useRef(false);
+  const hasConfettiMounted = useRef(false);
+  const skipNextSave = useRef(false);
+  const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const calculations = useMemo(() => {
     const {
@@ -124,6 +138,87 @@ export default function CoveredCallPage() {
     }));
   };
 
+  const handleReset = () => {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem(STORAGE_KEY);
+    }
+    skipNextSave.current = true;
+    setFormState(getDefaultFormState());
+  };
+
+  useEffect(() => {
+    const defaults = getDefaultFormState();
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) {
+      hasHydrated.current = true;
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(stored);
+      const nextState: FormState = { ...defaults };
+      const numberFields: Array<keyof Omit<FormState, "expirationDate">> = [
+        "stockPrice",
+        "strikePrice",
+        "premium",
+        "dividendPerShare",
+        "dividendsExpected",
+        "shares",
+      ];
+
+      numberFields.forEach((field) => {
+        const value = parsed?.[field];
+        if (typeof value === "number" && Number.isFinite(value)) {
+          nextState[field] = value;
+        }
+      });
+
+      if (
+        typeof parsed?.expirationDate === "string" &&
+        !Number.isNaN(
+          new Date(`${parsed.expirationDate}T00:00:00`).getTime(),
+        )
+      ) {
+        nextState.expirationDate = parsed.expirationDate;
+      }
+
+      setFormState(nextState);
+    } catch {
+      setFormState(defaults);
+    } finally {
+      hasHydrated.current = true;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!hasHydrated.current) {
+      return;
+    }
+
+    if (skipNextSave.current) {
+      skipNextSave.current = false;
+      return;
+    }
+
+    if (saveTimeout.current) {
+      clearTimeout(saveTimeout.current);
+    }
+
+    saveTimeout.current = setTimeout(() => {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(formState));
+    }, STORAGE_DEBOUNCE_MS);
+
+    return () => {
+      if (saveTimeout.current) {
+        clearTimeout(saveTimeout.current);
+      }
+    };
+  }, [formState]);
+
   useEffect(() => {
     const currentReturn = calculations.annualizedReturn;
 
@@ -134,8 +229,8 @@ export default function CoveredCallPage() {
     const previousReturn = lastSubmittedAnnualizedReturn.current;
     lastSubmittedAnnualizedReturn.current = currentReturn;
 
-    if (!hasMounted.current) {
-      hasMounted.current = true;
+    if (!hasConfettiMounted.current) {
+      hasConfettiMounted.current = true;
       return;
     }
 
@@ -280,6 +375,9 @@ export default function CoveredCallPage() {
             </p>
           </div>
         </form>
+        <button className="text-button" type="button" onClick={handleReset}>
+          Reset
+        </button>
 
         <div className="results" aria-live="polite">
           <article className="result-card">

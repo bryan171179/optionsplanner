@@ -130,6 +130,17 @@ input {
   cursor: pointer;
 }
 
+.text-button {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 0;
+  text-decoration: underline;
+  justify-self: start;
+}
+
 .results {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
