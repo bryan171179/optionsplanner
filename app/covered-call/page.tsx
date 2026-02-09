@@ -284,7 +284,7 @@ export default function CoveredCallPage() {
             </span>
           </article>
           <article className="result-card">
-            <h3>Breakeven</h3>
+            <h3>Break-even downside</h3>
             <p>{formatCurrency(calculations.breakevenPrice)}</p>
             <span>
               {formatCurrency(calculations.dividendPerShareTotal)} dividends +{" "}
