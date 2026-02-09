@@ -67,19 +67,20 @@ const calculateDaysUntilExpiration = (expirationDate: string) => {
 };
 
 export default function CoveredCallPage() {
-  const [formState, setFormState] = useState<FormState>(() =>
-    getDefaultFormState(),
-  );
-  const lastSubmittedAnnualizedReturn = useRef(
-    computeAnnualizedReturn({
-      totalReturn: 0,
-      days: calculateDaysUntilExpiration(formState.expirationDate),
-    }),
+  const defaultFormStateRef = useRef<FormState>(getDefaultFormState());
+  const [formState, setFormState] = useState<FormState>(
+    () => defaultFormStateRef.current,
   );
   const hasHydrated = useRef(false);
-  const hasConfettiMounted = useRef(false);
   const skipNextSave = useRef(false);
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const resultsRef = useRef<HTMLDivElement | null>(null);
+  const formRef = useRef<HTMLFormElement | null>(null);
+  const lastPlanSnapshot = useRef<string | null>(null);
+  const [resultsInView, setResultsInView] = useState(false);
+  const [hasTriggeredConfetti, setHasTriggeredConfetti] = useState(false);
+  const [hasUpdatedPlan, setHasUpdatedPlan] = useState(false);
+  const [isInputFocused, setIsInputFocused] = useState(false);
 
   const calculations = useMemo(() => {
     const {
@@ -161,6 +162,13 @@ export default function CoveredCallPage() {
     };
   }, [formState]);
 
+  const isDefaultPlan = useMemo(() => {
+    const defaults = defaultFormStateRef.current;
+    return (Object.keys(defaults) as Array<keyof FormState>).every(
+      (key) => defaults[key] === formState[key],
+    );
+  }, [formState]);
+
   const handleChange = (field: keyof typeof formState) =>
     (event: React.ChangeEvent<HTMLInputElement>) => {
       setFormState((prev) => ({
@@ -186,7 +194,7 @@ export default function CoveredCallPage() {
   };
 
   useEffect(() => {
-    const defaults = getDefaultFormState();
+    const defaults = defaultFormStateRef.current;
     if (typeof window === "undefined") {
       return;
     }
@@ -261,38 +269,120 @@ export default function CoveredCallPage() {
   }, [formState]);
 
   useEffect(() => {
+    const currentSnapshot = JSON.stringify(formState);
+    if (lastPlanSnapshot.current === null) {
+      lastPlanSnapshot.current = currentSnapshot;
+      return;
+    }
+
+    if (currentSnapshot !== lastPlanSnapshot.current) {
+      lastPlanSnapshot.current = currentSnapshot;
+      setHasTriggeredConfetti(false);
+      setHasUpdatedPlan(true);
+    }
+  }, [formState]);
+
+  useEffect(() => {
+    const resultsNode = resultsRef.current;
+    if (!resultsNode || typeof window === "undefined") {
+      return;
+    }
+
+    if (!("IntersectionObserver" in window)) {
+      setResultsInView(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setResultsInView(
+          entry.isIntersecting && entry.intersectionRatio >= 0.5,
+        );
+      },
+      { threshold: 0.5 },
+    );
+
+    observer.observe(resultsNode);
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
+    const formNode = formRef.current;
+    if (!formNode) {
+      return;
+    }
+
+    const handleFocusIn = (event: FocusEvent) => {
+      if (event.target instanceof HTMLInputElement) {
+        setIsInputFocused(true);
+      }
+    };
+
+    const handleFocusOut = (event: FocusEvent) => {
+      if (event.target instanceof HTMLInputElement) {
+        const nextTarget = event.relatedTarget as HTMLElement | null;
+        if (nextTarget instanceof HTMLInputElement && formNode.contains(nextTarget)) {
+          return;
+        }
+        setIsInputFocused(false);
+      }
+    };
+
+    formNode.addEventListener("focusin", handleFocusIn);
+    formNode.addEventListener("focusout", handleFocusOut);
+
+    return () => {
+      formNode.removeEventListener("focusin", handleFocusIn);
+      formNode.removeEventListener("focusout", handleFocusOut);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!resultsInView) {
+      return;
+    }
+
+    if (hasTriggeredConfetti || isInputFocused) {
+      return;
+    }
+
     const currentReturn = calculations.annualizedReturn;
-
-    if (!Number.isFinite(currentReturn)) {
+    if (!Number.isFinite(currentReturn) || currentReturn <= 0.15) {
       return;
     }
 
-    const previousReturn = lastSubmittedAnnualizedReturn.current;
-    lastSubmittedAnnualizedReturn.current = currentReturn;
-
-    if (!hasConfettiMounted.current) {
-      hasConfettiMounted.current = true;
+    if (!hasUpdatedPlan && isDefaultPlan) {
       return;
     }
 
-    if (previousReturn < 0.15 && currentReturn >= 0.15) {
-      if (typeof window === "undefined") {
-        return;
-      }
-
-      const prefersReducedMotion = window.matchMedia(
-        "(prefers-reduced-motion: reduce)",
-      ).matches;
-
-      if (!prefersReducedMotion) {
-        confetti({
-          particleCount: 120,
-          spread: 70,
-          origin: { y: 0.6 },
-        });
-      }
+    if (typeof window === "undefined") {
+      return;
     }
-  }, [calculations.annualizedReturn]);
+
+    const prefersReducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+
+    if (prefersReducedMotion) {
+      return;
+    }
+
+    confetti({
+      particleCount: 120,
+      spread: 70,
+      origin: { y: 0.6 },
+    });
+    setHasTriggeredConfetti(true);
+  }, [
+    calculations.annualizedReturn,
+    hasTriggeredConfetti,
+    hasUpdatedPlan,
+    isDefaultPlan,
+    isInputFocused,
+    resultsInView,
+  ]);
 
   return (
     <main className="page">
@@ -315,7 +405,7 @@ export default function CoveredCallPage() {
       </section>
 
       <section className="planner">
-        <form className="planner-form">
+        <form className="planner-form" ref={formRef}>
           <div className="field">
             <label htmlFor="stockPrice">Current stock price</label>
             <div className="input-wrap">
@@ -420,7 +510,7 @@ export default function CoveredCallPage() {
           Reset
         </button>
 
-        <div className="results" aria-live="polite">
+        <div className="results" aria-live="polite" ref={resultsRef}>
           <article className="result-card">
             <h3>Max profit</h3>
             <p>{formatCurrency(calculations.maxProfitTotal)}</p>
