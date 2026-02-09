@@ -1,7 +1,7 @@
 "use client";
 
 import confetti from "canvas-confetti";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("en-US", {
@@ -20,7 +20,8 @@ const computeAnnualizedYield = ({
   stockPrice: number;
   premium: number;
   days: number;
-}) => (days > 0 ? (premium / stockPrice) * (365 / days) : 0);
+}) =>
+  days > 0 && stockPrice > 0 ? (premium / stockPrice) * (365 / days) : 0;
 
 export default function CoveredCallPage() {
   const [formState, setFormState] = useState({
@@ -34,9 +35,19 @@ export default function CoveredCallPage() {
     computeAnnualizedYield(formState),
   );
 
+  const normalizeNumber = (value: number) =>
+    Number.isFinite(value) ? value : 0;
+
   const calculations = useMemo(() => {
-    const { stockPrice, strikePrice, premium, shares, days } = formState;
+    const stockPrice = normalizeNumber(formState.stockPrice);
+    const strikePrice = normalizeNumber(formState.strikePrice);
+    const premium = normalizeNumber(formState.premium);
+    const shares = normalizeNumber(formState.shares);
+    const days = normalizeNumber(formState.days);
     const premiumTotal = premium * shares;
+    const grossCost = stockPrice * shares;
+    const netCost = grossCost - premiumTotal;
+    const netCostPerShare = stockPrice - premium;
     const maxProfitPerShare = strikePrice - stockPrice + premium;
     const maxProfitTotal = maxProfitPerShare * shares;
     const breakevenPrice = stockPrice - premium;
@@ -48,6 +59,9 @@ export default function CoveredCallPage() {
     });
 
     return {
+      grossCost,
+      netCost,
+      netCostPerShare,
       premiumTotal,
       maxProfitPerShare,
       maxProfitTotal,
@@ -59,14 +73,14 @@ export default function CoveredCallPage() {
 
   const handleChange = (field: keyof typeof formState) =>
     (event: React.ChangeEvent<HTMLInputElement>) => {
+      const nextValue = event.target.valueAsNumber;
       setFormState((prev) => ({
         ...prev,
-        [field]: Number(event.target.value),
+        [field]: Number.isFinite(nextValue) ? nextValue : 0,
       }));
     };
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  useEffect(() => {
     const previousYield = lastSubmittedAnnualizedYield.current;
     const currentYield = calculations.annualizedYield;
     lastSubmittedAnnualizedYield.current = currentYield;
@@ -88,7 +102,7 @@ export default function CoveredCallPage() {
         });
       }
     }
-  };
+  }, [calculations.annualizedYield]);
 
   return (
     <main className="page">
@@ -111,7 +125,7 @@ export default function CoveredCallPage() {
       </section>
 
       <section className="planner">
-        <form className="planner-form" onSubmit={handleSubmit}>
+        <form className="planner-form">
           <div className="field">
             <label htmlFor="stockPrice">Current stock price</label>
             <div className="input-wrap">
@@ -180,9 +194,6 @@ export default function CoveredCallPage() {
               required
             />
           </div>
-          <button className="primary" type="submit">
-            Update plan
-          </button>
         </form>
 
         <div className="results" aria-live="polite">
@@ -191,6 +202,20 @@ export default function CoveredCallPage() {
             <p>{formatCurrency(calculations.maxProfitTotal)}</p>
             <span>
               {formatCurrency(calculations.maxProfitPerShare)} per share
+            </span>
+          </article>
+          <article className="result-card">
+            <h3>Gross position cost</h3>
+            <p>{formatCurrency(calculations.grossCost)}</p>
+            <span>
+              {formatCurrency(formState.stockPrice)} per share
+            </span>
+          </article>
+          <article className="result-card">
+            <h3>Net position cost</h3>
+            <p>{formatCurrency(calculations.netCost)}</p>
+            <span>
+              {formatCurrency(calculations.netCostPerShare)} per share
             </span>
           </article>
           <article className="result-card">
