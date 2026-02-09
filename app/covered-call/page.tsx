@@ -11,6 +11,7 @@ const formatCurrency = (value: number) =>
   }).format(value);
 
 const formatPercent = (value: number) => `${(value * 100).toFixed(2)}%`;
+const formatPercentValue = (value: number) => `${value.toFixed(2)}%`;
 
 const computeAnnualizedReturn = ({
   totalReturn,
@@ -79,6 +80,10 @@ export default function CoveredCallPage() {
     const breakevenPrice = stockPrice - premium - dividendPerShareTotal;
     const upsideCapValue = strikePrice - stockPrice;
     const totalReturn = stockPrice > 0 ? maxProfitPerShare / stockPrice : 0;
+    const downsideToBreakEvenPct =
+      stockPrice > 0 && Number.isFinite(breakevenPrice)
+        ? Math.max(0, ((stockPrice - breakevenPrice) / stockPrice) * 100)
+        : 0;
     const annualizedReturn = computeAnnualizedReturn({
       totalReturn,
       days: daysUntilExpiration,
@@ -95,6 +100,7 @@ export default function CoveredCallPage() {
       maxProfitPerShare,
       maxProfitTotal,
       breakevenPrice,
+      downsideToBreakEvenPct,
       upsideCapValue,
       totalReturn,
       annualizedReturn,
@@ -284,11 +290,11 @@ export default function CoveredCallPage() {
             </span>
           </article>
           <article className="result-card">
-            <h3>Break-even downside</h3>
+            <h3>Break even</h3>
             <p>{formatCurrency(calculations.breakevenPrice)}</p>
             <span>
-              {formatCurrency(calculations.dividendPerShareTotal)} dividends +{" "}
-              {formatCurrency(formState.premium)} premium per share
+              downside to break even:{" "}
+              {formatPercentValue(calculations.downsideToBreakEvenPct)}
             </span>
           </article>
           <article className="result-card">
