@@ -143,32 +143,83 @@ input {
 
 .results {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
 }
 
 .result-card {
-  background: var(--card);
+  --card-accent: #98a2b3;
+  --card-tint: #f8fafc;
+  background: linear-gradient(165deg, #fff 0%, var(--card-tint) 100%);
   border-radius: 18px;
   border: 1px solid var(--border);
   padding: 20px;
   box-shadow: var(--shadow);
+  position: relative;
+  overflow: hidden;
+  min-height: 170px;
+}
+
+.result-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at right top, color-mix(in srgb, var(--card-accent) 24%, transparent), transparent 58%);
+  pointer-events: none;
+}
+
+.result-card > * {
+  position: relative;
+  z-index: 1;
 }
 
 .result-card h3 {
   margin: 0 0 8px;
   font-size: 1rem;
+  color: color-mix(in srgb, var(--card-accent) 60%, #0f172a);
 }
 
 .result-card p {
   margin: 0 0 4px;
-  font-size: 1.5rem;
+  font-size: clamp(1.35rem, 3.6vw, 2rem);
   font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 .result-card span {
   color: var(--muted);
   font-size: 0.9rem;
+}
+
+.result-card--profit {
+  --card-accent: #12b76a;
+  --card-tint: #ecfdf3;
+}
+
+.result-card--return {
+  --card-accent: #155eef;
+  --card-tint: #eff4ff;
+}
+
+.result-card--income {
+  --card-accent: #0e9384;
+  --card-tint: #f0fdfa;
+}
+
+.result-card--cap {
+  --card-accent: #7a5af8;
+  --card-tint: #f4f3ff;
+}
+
+.result-card--neutral {
+  --card-accent: #f79009;
+  --card-tint: #fffaeb;
+}
+
+.result-card--cost {
+  --card-accent: #344054;
+  --card-tint: #f2f4f7;
 }
 
 .notes {
@@ -206,5 +257,35 @@ input {
   .planner-form,
   .result-card {
     box-shadow: none;
+  }
+
+  .results {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .result-card {
+    padding: 16px;
+    min-height: 148px;
+    border-radius: 16px;
+  }
+
+  .result-card h3 {
+    font-size: 0.95rem;
+  }
+
+  .result-card span {
+    font-size: 0.84rem;
+  }
+}
+
+@media (max-width: 430px) {
+  .results {
+    grid-template-columns: repeat(2, minmax(135px, 1fr));
+  }
+
+  .result-card {
+    min-height: 136px;
+    padding: 14px;
   }
 }
