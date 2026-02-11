@@ -122,6 +122,7 @@ const getDefaultFormState = () => {
   defaultExpiration.setDate(defaultExpiration.getDate() + 30);
 
   return {
+    symbol: "AAPL",
     stockPrice: "95",
     strikePrice: "105",
     premium: "2.75",
@@ -135,6 +136,7 @@ const getDefaultFormState = () => {
 type FormState = ReturnType<typeof getDefaultFormState>;
 
 const getResetFormState = () => ({
+  symbol: "",
   stockPrice: "0",
   strikePrice: "0",
   premium: "0",
@@ -322,6 +324,10 @@ export default function CoveredCallPage() {
         "shares",
       ];
 
+      if (typeof parsed?.symbol === "string") {
+        nextState.symbol = parsed.symbol.toUpperCase().slice(0, 10);
+      }
+
       numberFields.forEach((field) => {
         const value = parsed?.[field];
         if (typeof value === "string") {
@@ -396,6 +402,19 @@ export default function CoveredCallPage() {
 
       <section className="planner">
         <form className="planner-form">
+          <div className="field">
+            <label htmlFor="symbol">Stock symbol</label>
+            <input
+              id="symbol"
+              name="symbol"
+              type="text"
+              value={formState.symbol}
+              onChange={handleChange("symbol")}
+              maxLength={10}
+              placeholder="e.g. AAPL"
+              autoCapitalize="characters"
+            />
+          </div>
           <div className="field">
             <label htmlFor="stockPrice">Current stock price</label>
             <div className="input-wrap">
