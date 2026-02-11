@@ -19,11 +19,6 @@ type TradeQuality = {
   hasElevatedRiskWarning: boolean;
 };
 
-type SymbolInfo = {
-  companyName: string;
-  sector: string;
-};
-
 const evaluateTradeQuality = ({
   premiumPerDayPct,
   downsideToBreakEvenPct,
@@ -172,9 +167,6 @@ export default function CoveredCallPage() {
   const hasHydrated = useRef(false);
   const skipNextSave = useRef(false);
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [symbolInfo, setSymbolInfo] = useState<SymbolInfo | null>(null);
-  const [symbolInfoStatus, setSymbolInfoStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
-  const [symbolInfoError, setSymbolInfoError] = useState("");
 
   const calculations = useMemo(() => {
     const {
@@ -292,18 +284,6 @@ export default function CoveredCallPage() {
       }));
     };
 
-  const handleSymbolChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const normalizedSymbol = event.target.value
-      .toUpperCase()
-      .replace(/[^A-Z0-9.-]/g, "")
-      .slice(0, 10);
-
-    setFormState((prev) => ({
-      ...prev,
-      symbol: normalizedSymbol,
-    }));
-  };
-
   const handleDateChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setFormState((prev) => ({
       ...prev,
@@ -398,53 +378,6 @@ export default function CoveredCallPage() {
       }
     };
   }, [formState]);
-  useEffect(() => {
-    const normalizedSymbol = formState.symbol.trim().toUpperCase();
-
-    if (!normalizedSymbol) {
-      setSymbolInfo(null);
-      setSymbolInfoStatus("idle");
-      setSymbolInfoError("");
-      return;
-    }
-
-    const controller = new AbortController();
-    const timeout = setTimeout(async () => {
-      setSymbolInfoStatus("loading");
-      setSymbolInfoError("");
-
-      try {
-        const response = await fetch(
-          `/api/symbol-info?symbol=${encodeURIComponent(normalizedSymbol)}`,
-          { signal: controller.signal },
-        );
-        const payload = await response.json();
-
-        if (!response.ok) {
-          throw new Error(payload?.error || "Unable to load company details.");
-        }
-
-        setSymbolInfo({
-          companyName: payload.companyName ?? "",
-          sector: payload.sector ?? "",
-        });
-        setSymbolInfoStatus("success");
-      } catch (error) {
-        if ((error as Error).name === "AbortError") {
-          return;
-        }
-
-        setSymbolInfo(null);
-        setSymbolInfoStatus("error");
-        setSymbolInfoError((error as Error).message || "Unable to load company details.");
-      }
-    }, 350);
-
-    return () => {
-      controller.abort();
-      clearTimeout(timeout);
-    };
-  }, [formState.symbol]);
 
 
   return (
@@ -476,16 +409,11 @@ export default function CoveredCallPage() {
               name="symbol"
               type="text"
               value={formState.symbol}
-              onChange={handleSymbolChange}
+              onChange={handleChange("symbol")}
               maxLength={10}
               placeholder="e.g. AAPL"
               autoCapitalize="characters"
             />
-            <p className="helper-text">
-              {symbolInfoStatus === "loading" && "Looking up company details..."}
-              {symbolInfoStatus === "success" && symbolInfo && [symbolInfo.companyName, symbolInfo.sector].filter(Boolean).join(" · ")}
-              {symbolInfoStatus === "error" && symbolInfoError}
-            </p>
           </div>
           <div className="field">
             <label htmlFor="stockPrice">Current stock price</label>
@@ -559,11 +487,6 @@ export default function CoveredCallPage() {
               onChange={handleChange("dividendsExpected")}
               required
             />
-            <p className="helper-text">
-              {symbolInfoStatus === "loading" && "Looking up company details..."}
-              {symbolInfoStatus === "success" && symbolInfo && [symbolInfo.companyName, symbolInfo.sector].filter(Boolean).join(" · ")}
-              {symbolInfoStatus === "error" && symbolInfoError}
-            </p>
           </div>
           <div className="field">
             <label htmlFor="shares">Shares owned</label>
@@ -576,11 +499,6 @@ export default function CoveredCallPage() {
               onChange={handleChange("shares")}
               required
             />
-            <p className="helper-text">
-              {symbolInfoStatus === "loading" && "Looking up company details..."}
-              {symbolInfoStatus === "success" && symbolInfo && [symbolInfo.companyName, symbolInfo.sector].filter(Boolean).join(" · ")}
-              {symbolInfoStatus === "error" && symbolInfoError}
-            </p>
           </div>
           <div className="field">
             <label htmlFor="expirationDate">Expiration date</label>
