@@ -222,6 +222,26 @@ input {
   --card-tint: #f2f4f7;
 }
 
+.result-card--quality-strong {
+  --card-accent: #039855;
+  --card-tint: #ecfdf3;
+}
+
+.result-card--quality-reasonable {
+  --card-accent: #155eef;
+  --card-tint: #eff4ff;
+}
+
+.result-card--quality-borderline {
+  --card-accent: #f79009;
+  --card-tint: #fffaeb;
+}
+
+.result-card--quality-weak {
+  --card-accent: #d92d20;
+  --card-tint: #fef3f2;
+}
+
 .notes {
   background: #f0f3ff;
   border-radius: 24px;
