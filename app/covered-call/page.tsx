@@ -61,9 +61,9 @@ const evaluateTradeQuality = ({
   }
 
   if (upsideCapPct < 1) {
-    addFactor(-4, "Upside is tightly capped");
+    addFactor(-10, "Upside is very capped");
   } else if (upsideCapPct <= 3) {
-    addFactor(-2, "Upside is somewhat capped");
+    addFactor(-5, "Upside is capped");
   } else if (upsideCapPct <= 7) {
     addFactor(5, "Upside room is fair");
   } else {
@@ -72,14 +72,14 @@ const evaluateTradeQuality = ({
 
   if (totalReturnPct < 8) {
     addFactor(-10, "Max return potential is limited");
-  } else if (totalReturnPct < 12) {
+  } else if (totalReturnPct <= 15) {
     // neutral
-  } else if (totalReturnPct <= 20) {
+  } else if (totalReturnPct <= 30) {
+    addFactor(5, "Return potential is decent");
+  } else if (totalReturnPct <= 50) {
     addFactor(10, "Return potential is strong");
-  } else if (totalReturnPct <= 35) {
-    addFactor(15, "Return potential is very strong");
   } else {
-    addFactor(20, "Return potential is exceptional");
+    addFactor(15, "Return potential is exceptional");
   }
 
   const clampedScore = Math.max(0, Math.min(100, score));
