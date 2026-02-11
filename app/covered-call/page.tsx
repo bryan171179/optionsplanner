@@ -23,56 +23,70 @@ const evaluateTradeQuality = ({
   premiumPerDayPct,
   downsideToBreakEvenPct,
   upsideCapPct,
+  totalReturnPct,
 }: {
   premiumPerDayPct: number;
   downsideToBreakEvenPct: number;
   upsideCapPct: number;
+  totalReturnPct: number;
 }): TradeQuality => {
   let score = 50;
-  const notes: string[] = [];
+  const factorNotes: Array<{ impact: number; note: string }> = [];
   let hasElevatedRiskWarning = false;
 
+  const addFactor = (impact: number, note: string) => {
+    score += impact;
+    factorNotes.push({ impact: Math.abs(impact), note });
+  };
+
   if (premiumPerDayPct < 0.05) {
-    score -= 15;
-    notes.push("Premium/day is low");
+    addFactor(-15, "Premium/day is low");
   } else if (premiumPerDayPct < 0.12) {
     // neutral
   } else if (premiumPerDayPct <= 0.2) {
-    score += 10;
-    notes.push("Premium/day is attractive");
+    addFactor(10, "Premium/day is attractive");
   } else {
-    score += 15;
+    addFactor(15, "Premium/day is very high");
     hasElevatedRiskWarning = true;
-    notes.push("Premium/day is very high");
   }
 
   if (downsideToBreakEvenPct < 2) {
-    score -= 20;
-    notes.push("Thin downside cushion");
+    addFactor(-20, "Thin downside cushion");
   } else if (downsideToBreakEvenPct <= 5) {
     // neutral
   } else if (downsideToBreakEvenPct <= 8) {
-    score += 10;
-    notes.push("Downside cushion is solid");
+    addFactor(10, "Downside cushion is solid");
   } else {
-    score += 15;
-    notes.push("Downside cushion is strong");
+    addFactor(15, "Downside cushion is strong");
   }
 
   if (upsideCapPct < 1) {
-    score -= 10;
-    notes.push("Upside is very capped");
+    addFactor(-10, "Upside is very capped");
   } else if (upsideCapPct <= 3) {
-    score -= 5;
-    notes.push("Upside is capped");
+    addFactor(-5, "Upside is capped");
   } else if (upsideCapPct <= 7) {
-    score += 5;
+    addFactor(5, "Upside room is fair");
   } else {
-    score += 10;
-    notes.push("Upside room is healthy");
+    addFactor(10, "Upside room is healthy");
+  }
+
+  if (totalReturnPct < 8) {
+    addFactor(-10, "Max return potential is limited");
+  } else if (totalReturnPct <= 15) {
+    // neutral
+  } else if (totalReturnPct <= 30) {
+    addFactor(5, "Return potential is decent");
+  } else if (totalReturnPct <= 50) {
+    addFactor(10, "Return potential is strong");
+  } else {
+    addFactor(15, "Return potential is exceptional");
   }
 
   const clampedScore = Math.max(0, Math.min(100, score));
+  const notes = factorNotes
+    .sort((a, b) => b.impact - a.impact)
+    .slice(0, 2)
+    .map((factor) => factor.note);
   const label =
     clampedScore >= 80
       ? "Strong"
@@ -220,6 +234,7 @@ export default function CoveredCallPage() {
       premiumPerDayPct,
       downsideToBreakEvenPct,
       upsideCapPct,
+      totalReturnPct: totalReturn * 100,
     });
     const tradeQualitySubtitle = [
       tradeQuality.notes[0],
