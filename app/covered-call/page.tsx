@@ -12,6 +12,98 @@ const formatCurrency = (value: number) =>
 const formatPercent = (value: number) => `${(value * 100).toFixed(2)}%`;
 const formatPercentValue = (value: number) => `${value.toFixed(2)}%`;
 
+type TradeQuality = {
+  score: number;
+  label: "Strong" | "Reasonable" | "Borderline" | "Weak";
+  notes: string[];
+  hasElevatedRiskWarning: boolean;
+};
+
+const evaluateTradeQuality = ({
+  premiumPerDayPct,
+  downsideToBreakEvenPct,
+  upsideCapPct,
+  totalReturnPct,
+}: {
+  premiumPerDayPct: number;
+  downsideToBreakEvenPct: number;
+  upsideCapPct: number;
+  totalReturnPct: number;
+}): TradeQuality => {
+  let score = 50;
+  const factorNotes: Array<{ impact: number; note: string }> = [];
+  let hasElevatedRiskWarning = false;
+
+  const addFactor = (impact: number, note: string) => {
+    score += impact;
+    factorNotes.push({ impact: Math.abs(impact), note });
+  };
+
+  if (premiumPerDayPct < 0.05) {
+    addFactor(-15, "Premium/day is low");
+  } else if (premiumPerDayPct < 0.12) {
+    // neutral
+  } else if (premiumPerDayPct <= 0.2) {
+    addFactor(10, "Premium/day is attractive");
+  } else {
+    addFactor(15, "Premium/day is very high");
+    hasElevatedRiskWarning = true;
+  }
+
+  if (downsideToBreakEvenPct < 2) {
+    addFactor(-20, "Thin downside cushion");
+  } else if (downsideToBreakEvenPct <= 5) {
+    // neutral
+  } else if (downsideToBreakEvenPct <= 8) {
+    addFactor(10, "Downside cushion is solid");
+  } else {
+    addFactor(15, "Downside cushion is strong");
+  }
+
+  if (upsideCapPct < 1) {
+    addFactor(-10, "Upside is very capped");
+  } else if (upsideCapPct <= 3) {
+    addFactor(-5, "Upside is capped");
+  } else if (upsideCapPct <= 7) {
+    addFactor(5, "Upside room is fair");
+  } else {
+    addFactor(10, "Upside room is healthy");
+  }
+
+  if (totalReturnPct < 8) {
+    addFactor(-10, "Max return potential is limited");
+  } else if (totalReturnPct <= 15) {
+    // neutral
+  } else if (totalReturnPct <= 30) {
+    addFactor(5, "Return potential is decent");
+  } else if (totalReturnPct <= 50) {
+    addFactor(10, "Return potential is strong");
+  } else {
+    addFactor(15, "Return potential is exceptional");
+  }
+
+  const clampedScore = Math.max(0, Math.min(100, score));
+  const notes = factorNotes
+    .sort((a, b) => b.impact - a.impact)
+    .slice(0, 2)
+    .map((factor) => factor.note);
+  const label =
+    clampedScore >= 80
+      ? "Strong"
+      : clampedScore >= 65
+        ? "Reasonable"
+        : clampedScore >= 50
+          ? "Borderline"
+          : "Weak";
+
+  return {
+    score: clampedScore,
+    label,
+    notes,
+    hasElevatedRiskWarning,
+  };
+};
+
 const STORAGE_KEY = "optionsplanner.coveredCall.inputs.v1";
 const STORAGE_DEBOUNCE_MS = 350;
 
@@ -119,6 +211,14 @@ export default function CoveredCallPage() {
     const upsideCapValue = safeStrikePrice - safeStockPrice;
     const totalReturn =
       safeStockPrice > 0 ? maxProfitPerShare / safeStockPrice : 0;
+    const premiumPct =
+      safeStockPrice > 0 ? (safePremium / safeStockPrice) * 100 : 0;
+    const premiumPerDayPct =
+      daysUntilExpiration > 0 ? premiumPct / daysUntilExpiration : 0;
+    const upsideCapPct =
+      safeStockPrice > 0
+        ? ((safeStrikePrice - safeStockPrice) / safeStockPrice) * 100
+        : 0;
     const downsideToBreakEvenPct =
       safeStockPrice > 0 && Number.isFinite(breakevenPrice)
         ? Math.max(
@@ -130,6 +230,21 @@ export default function CoveredCallPage() {
       totalReturn,
       days: daysUntilExpiration,
     });
+    const tradeQuality = evaluateTradeQuality({
+      premiumPerDayPct,
+      downsideToBreakEvenPct,
+      upsideCapPct,
+      totalReturnPct: totalReturn * 100,
+    });
+    const tradeQualitySubtitle = [
+      tradeQuality.notes[0],
+      tradeQuality.notes[1],
+      tradeQuality.hasElevatedRiskWarning
+        ? "elevated vol/event risk possible"
+        : null,
+    ]
+      .filter(Boolean)
+      .join("; ");
 
     return {
       safeStockPrice,
@@ -147,10 +262,15 @@ export default function CoveredCallPage() {
       maxProfitPerShare,
       maxProfitTotal,
       breakevenPrice,
+      premiumPct,
+      premiumPerDayPct,
       downsideToBreakEvenPct,
       upsideCapValue,
+      upsideCapPct,
       totalReturn,
       annualizedReturn,
+      tradeQuality,
+      tradeQualitySubtitle,
     };
   }, [formState]);
 
@@ -417,6 +537,13 @@ export default function CoveredCallPage() {
             <h3>Total income</h3>
             <p>{formatCurrency(calculations.premiumTotal + calculations.dividendsTotal)}</p>
             <span>{formatCurrency(calculations.dividendsTotal)} dividends expected</span>
+          </article>
+          <article className={`result-card result-card--quality-${calculations.tradeQuality.label.toLowerCase()}`}>
+            <h3>Trade quality</h3>
+            <p>{calculations.tradeQuality.label}</p>
+            <span>
+              {calculations.tradeQuality.score}/100 · {calculations.tradeQualitySubtitle || "Balanced risk/reward mix"}
+            </span>
           </article>
         </div>
       </section>
