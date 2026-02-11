@@ -24,11 +24,13 @@ const evaluateTradeQuality = ({
   downsideToBreakEvenPct,
   upsideCapPct,
   totalReturnPct,
+  impliedVolatilityPct,
 }: {
   premiumPerDayPct: number;
   downsideToBreakEvenPct: number;
   upsideCapPct: number;
   totalReturnPct: number;
+  impliedVolatilityPct: number;
 }): TradeQuality => {
   let score = 50;
   const factorNotes: Array<{ impact: number; note: string }> = [];
@@ -61,6 +63,9 @@ const evaluateTradeQuality = ({
   }
 
   if (upsideCapPct < 1) {
+    addFactor(-4, "Upside is tightly capped");
+  } else if (upsideCapPct <= 3) {
+    addFactor(-2, "Upside is somewhat capped");
     addFactor(-10, "Upside is very capped");
   } else if (upsideCapPct <= 3) {
     addFactor(-5, "Upside is capped");
@@ -72,6 +77,28 @@ const evaluateTradeQuality = ({
 
   if (totalReturnPct < 8) {
     addFactor(-10, "Max return potential is limited");
+  } else if (totalReturnPct < 12) {
+    // neutral
+  } else if (totalReturnPct <= 20) {
+    addFactor(10, "Return potential is strong");
+  } else if (totalReturnPct <= 35) {
+    addFactor(15, "Return potential is very strong");
+  } else {
+    addFactor(20, "Return potential is exceptional");
+  }
+
+  if (impliedVolatilityPct < 15) {
+    addFactor(-8, "IV is low for option income");
+  } else if (impliedVolatilityPct <= 25) {
+    // neutral
+  } else if (impliedVolatilityPct <= 45) {
+    addFactor(10, "IV supports stronger premium");
+  } else if (impliedVolatilityPct <= 65) {
+    addFactor(5, "IV is elevated");
+    hasElevatedRiskWarning = true;
+  } else {
+    addFactor(-5, "IV is extremely elevated");
+    hasElevatedRiskWarning = true;
   } else if (totalReturnPct <= 15) {
     // neutral
   } else if (totalReturnPct <= 30) {
@@ -129,6 +156,7 @@ const getDefaultFormState = () => {
     dividendPerShare: "0.25",
     dividendsExpected: "1",
     shares: "100",
+    impliedVolatility: "30",
     expirationDate: formatDateInput(defaultExpiration),
   };
 };
@@ -143,6 +171,7 @@ const getResetFormState = () => ({
   dividendPerShare: "0",
   dividendsExpected: "0",
   shares: "0",
+  impliedVolatility: "30",
   expirationDate: formatDateInput(new Date()),
 });
 
@@ -176,6 +205,7 @@ export default function CoveredCallPage() {
       dividendPerShare,
       dividendsExpected,
       shares,
+      impliedVolatility,
       expirationDate,
     } = formState;
     const parsedStockPrice = Number.parseFloat(stockPrice);
@@ -184,6 +214,7 @@ export default function CoveredCallPage() {
     const parsedDividendPerShare = Number.parseFloat(dividendPerShare);
     const parsedDividendsExpected = Number.parseInt(dividendsExpected, 10);
     const parsedShares = Number.parseInt(shares, 10);
+    const parsedImpliedVolatility = Number.parseFloat(impliedVolatility);
     const safeStockPrice = Number.isFinite(parsedStockPrice)
       ? parsedStockPrice
       : 0;
@@ -198,6 +229,9 @@ export default function CoveredCallPage() {
       ? parsedDividendsExpected
       : 0;
     const safeShares = Number.isFinite(parsedShares) ? parsedShares : 0;
+    const safeImpliedVolatility = Number.isFinite(parsedImpliedVolatility)
+      ? Math.min(100, Math.max(5, parsedImpliedVolatility))
+      : 30;
     const daysUntilExpiration = calculateDaysUntilExpiration(expirationDate);
     const dividendPerShareTotal = safeDividendPerShare * safeDividendsExpected;
     const grossCost = safeStockPrice * safeShares;
@@ -237,6 +271,7 @@ export default function CoveredCallPage() {
       downsideToBreakEvenPct,
       upsideCapPct,
       totalReturnPct: totalReturn * 100,
+      impliedVolatilityPct: safeImpliedVolatility,
     });
     const tradeQualitySubtitle = [
       tradeQuality.notes[0],
@@ -253,6 +288,7 @@ export default function CoveredCallPage() {
       safeStrikePrice,
       safePremium,
       safeShares,
+      safeImpliedVolatility,
       safeDividendsExpected,
       daysUntilExpiration,
       dividendPerShareTotal,
@@ -322,6 +358,7 @@ export default function CoveredCallPage() {
         "dividendPerShare",
         "dividendsExpected",
         "shares",
+        "impliedVolatility",
       ];
 
       if (typeof parsed?.symbol === "string") {
@@ -429,6 +466,20 @@ export default function CoveredCallPage() {
                 required
               />
             </div>
+          </div>
+          <div className="field">
+            <label htmlFor="impliedVolatility">Implied volatility</label>
+            <input
+              id="impliedVolatility"
+              name="impliedVolatility"
+              type="range"
+              min="5"
+              max="100"
+              step="1"
+              value={formState.impliedVolatility}
+              onChange={handleChange("impliedVolatility")}
+            />
+            <p className="helper-text">{calculations.safeImpliedVolatility.toFixed(0)}%</p>
           </div>
           <div className="field">
             <label htmlFor="strikePrice">Call strike price</label>
