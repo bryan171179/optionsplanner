@@ -12,6 +12,103 @@ const formatCurrency = (value: number) =>
 const formatPercent = (value: number) => `${(value * 100).toFixed(2)}%`;
 const formatPercentValue = (value: number) => `${value.toFixed(2)}%`;
 
+type TradeQuality = {
+  score: number;
+  label: "Strong" | "Reasonable" | "Borderline" | "Weak";
+  notes: string[];
+  hasElevatedRiskWarning: boolean;
+};
+
+type SymbolInfo = {
+  companyName: string;
+  sector: string;
+};
+
+const evaluateTradeQuality = ({
+  premiumPerDayPct,
+  downsideToBreakEvenPct,
+  upsideCapPct,
+  totalReturnPct,
+}: {
+  premiumPerDayPct: number;
+  downsideToBreakEvenPct: number;
+  upsideCapPct: number;
+  totalReturnPct: number;
+}): TradeQuality => {
+  let score = 50;
+  const factorNotes: Array<{ impact: number; note: string }> = [];
+  let hasElevatedRiskWarning = false;
+
+  const addFactor = (impact: number, note: string) => {
+    score += impact;
+    factorNotes.push({ impact: Math.abs(impact), note });
+  };
+
+  if (premiumPerDayPct < 0.05) {
+    addFactor(-15, "Premium/day is low");
+  } else if (premiumPerDayPct < 0.12) {
+    // neutral
+  } else if (premiumPerDayPct <= 0.2) {
+    addFactor(10, "Premium/day is attractive");
+  } else {
+    addFactor(15, "Premium/day is very high");
+    hasElevatedRiskWarning = true;
+  }
+
+  if (downsideToBreakEvenPct < 2) {
+    addFactor(-20, "Thin downside cushion");
+  } else if (downsideToBreakEvenPct <= 5) {
+    // neutral
+  } else if (downsideToBreakEvenPct <= 8) {
+    addFactor(10, "Downside cushion is solid");
+  } else {
+    addFactor(15, "Downside cushion is strong");
+  }
+
+  if (upsideCapPct < 1) {
+    addFactor(-4, "Upside is tightly capped");
+  } else if (upsideCapPct <= 3) {
+    addFactor(-2, "Upside is somewhat capped");
+  } else if (upsideCapPct <= 7) {
+    addFactor(5, "Upside room is fair");
+  } else {
+    addFactor(10, "Upside room is healthy");
+  }
+
+  if (totalReturnPct < 8) {
+    addFactor(-10, "Max return potential is limited");
+  } else if (totalReturnPct < 12) {
+    // neutral
+  } else if (totalReturnPct <= 20) {
+    addFactor(10, "Return potential is strong");
+  } else if (totalReturnPct <= 35) {
+    addFactor(15, "Return potential is very strong");
+  } else {
+    addFactor(20, "Return potential is exceptional");
+  }
+
+  const clampedScore = Math.max(0, Math.min(100, score));
+  const notes = factorNotes
+    .sort((a, b) => b.impact - a.impact)
+    .slice(0, 2)
+    .map((factor) => factor.note);
+  const label =
+    clampedScore >= 80
+      ? "Strong"
+      : clampedScore >= 65
+        ? "Reasonable"
+        : clampedScore >= 50
+          ? "Borderline"
+          : "Weak";
+
+  return {
+    score: clampedScore,
+    label,
+    notes,
+    hasElevatedRiskWarning,
+  };
+};
+
 const STORAGE_KEY = "optionsplanner.coveredCall.inputs.v1";
 const STORAGE_DEBOUNCE_MS = 350;
 
@@ -30,6 +127,7 @@ const getDefaultFormState = () => {
   defaultExpiration.setDate(defaultExpiration.getDate() + 30);
 
   return {
+    symbol: "AAPL",
     stockPrice: "95",
     strikePrice: "105",
     premium: "2.75",
@@ -43,6 +141,7 @@ const getDefaultFormState = () => {
 type FormState = ReturnType<typeof getDefaultFormState>;
 
 const getResetFormState = () => ({
+  symbol: "",
   stockPrice: "0",
   strikePrice: "0",
   premium: "0",
@@ -73,6 +172,9 @@ export default function CoveredCallPage() {
   const hasHydrated = useRef(false);
   const skipNextSave = useRef(false);
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [symbolInfo, setSymbolInfo] = useState<SymbolInfo | null>(null);
+  const [symbolInfoStatus, setSymbolInfoStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [symbolInfoError, setSymbolInfoError] = useState("");
 
   const calculations = useMemo(() => {
     const {
@@ -119,6 +221,14 @@ export default function CoveredCallPage() {
     const upsideCapValue = safeStrikePrice - safeStockPrice;
     const totalReturn =
       safeStockPrice > 0 ? maxProfitPerShare / safeStockPrice : 0;
+    const premiumPct =
+      safeStockPrice > 0 ? (safePremium / safeStockPrice) * 100 : 0;
+    const premiumPerDayPct =
+      daysUntilExpiration > 0 ? premiumPct / daysUntilExpiration : 0;
+    const upsideCapPct =
+      safeStockPrice > 0
+        ? ((safeStrikePrice - safeStockPrice) / safeStockPrice) * 100
+        : 0;
     const downsideToBreakEvenPct =
       safeStockPrice > 0 && Number.isFinite(breakevenPrice)
         ? Math.max(
@@ -130,6 +240,21 @@ export default function CoveredCallPage() {
       totalReturn,
       days: daysUntilExpiration,
     });
+    const tradeQuality = evaluateTradeQuality({
+      premiumPerDayPct,
+      downsideToBreakEvenPct,
+      upsideCapPct,
+      totalReturnPct: totalReturn * 100,
+    });
+    const tradeQualitySubtitle = [
+      tradeQuality.notes[0],
+      tradeQuality.notes[1],
+      tradeQuality.hasElevatedRiskWarning
+        ? "elevated vol/event risk possible"
+        : null,
+    ]
+      .filter(Boolean)
+      .join("; ");
 
     return {
       safeStockPrice,
@@ -147,10 +272,15 @@ export default function CoveredCallPage() {
       maxProfitPerShare,
       maxProfitTotal,
       breakevenPrice,
+      premiumPct,
+      premiumPerDayPct,
       downsideToBreakEvenPct,
       upsideCapValue,
+      upsideCapPct,
       totalReturn,
       annualizedReturn,
+      tradeQuality,
+      tradeQualitySubtitle,
     };
   }, [formState]);
 
@@ -161,6 +291,18 @@ export default function CoveredCallPage() {
         [field]: event.target.value,
       }));
     };
+
+  const handleSymbolChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const normalizedSymbol = event.target.value
+      .toUpperCase()
+      .replace(/[^A-Z0-9.-]/g, "")
+      .slice(0, 10);
+
+    setFormState((prev) => ({
+      ...prev,
+      symbol: normalizedSymbol,
+    }));
+  };
 
   const handleDateChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setFormState((prev) => ({
@@ -201,6 +343,10 @@ export default function CoveredCallPage() {
         "dividendsExpected",
         "shares",
       ];
+
+      if (typeof parsed?.symbol === "string") {
+        nextState.symbol = parsed.symbol.toUpperCase().slice(0, 10);
+      }
 
       numberFields.forEach((field) => {
         const value = parsed?.[field];
@@ -252,6 +398,53 @@ export default function CoveredCallPage() {
       }
     };
   }, [formState]);
+  useEffect(() => {
+    const normalizedSymbol = formState.symbol.trim().toUpperCase();
+
+    if (!normalizedSymbol) {
+      setSymbolInfo(null);
+      setSymbolInfoStatus("idle");
+      setSymbolInfoError("");
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(async () => {
+      setSymbolInfoStatus("loading");
+      setSymbolInfoError("");
+
+      try {
+        const response = await fetch(
+          `/api/symbol-info?symbol=${encodeURIComponent(normalizedSymbol)}`,
+          { signal: controller.signal },
+        );
+        const payload = await response.json();
+
+        if (!response.ok) {
+          throw new Error(payload?.error || "Unable to load company details.");
+        }
+
+        setSymbolInfo({
+          companyName: payload.companyName ?? "",
+          sector: payload.sector ?? "",
+        });
+        setSymbolInfoStatus("success");
+      } catch (error) {
+        if ((error as Error).name === "AbortError") {
+          return;
+        }
+
+        setSymbolInfo(null);
+        setSymbolInfoStatus("error");
+        setSymbolInfoError((error as Error).message || "Unable to load company details.");
+      }
+    }, 350);
+
+    return () => {
+      controller.abort();
+      clearTimeout(timeout);
+    };
+  }, [formState.symbol]);
 
 
   return (
@@ -276,6 +469,24 @@ export default function CoveredCallPage() {
 
       <section className="planner">
         <form className="planner-form">
+          <div className="field">
+            <label htmlFor="symbol">Stock symbol</label>
+            <input
+              id="symbol"
+              name="symbol"
+              type="text"
+              value={formState.symbol}
+              onChange={handleSymbolChange}
+              maxLength={10}
+              placeholder="e.g. AAPL"
+              autoCapitalize="characters"
+            />
+            <p className="helper-text">
+              {symbolInfoStatus === "loading" && "Looking up company details..."}
+              {symbolInfoStatus === "success" && symbolInfo && [symbolInfo.companyName, symbolInfo.sector].filter(Boolean).join(" · ")}
+              {symbolInfoStatus === "error" && symbolInfoError}
+            </p>
+          </div>
           <div className="field">
             <label htmlFor="stockPrice">Current stock price</label>
             <div className="input-wrap">
@@ -348,6 +559,11 @@ export default function CoveredCallPage() {
               onChange={handleChange("dividendsExpected")}
               required
             />
+            <p className="helper-text">
+              {symbolInfoStatus === "loading" && "Looking up company details..."}
+              {symbolInfoStatus === "success" && symbolInfo && [symbolInfo.companyName, symbolInfo.sector].filter(Boolean).join(" · ")}
+              {symbolInfoStatus === "error" && symbolInfoError}
+            </p>
           </div>
           <div className="field">
             <label htmlFor="shares">Shares owned</label>
@@ -360,6 +576,11 @@ export default function CoveredCallPage() {
               onChange={handleChange("shares")}
               required
             />
+            <p className="helper-text">
+              {symbolInfoStatus === "loading" && "Looking up company details..."}
+              {symbolInfoStatus === "success" && symbolInfo && [symbolInfo.companyName, symbolInfo.sector].filter(Boolean).join(" · ")}
+              {symbolInfoStatus === "error" && symbolInfoError}
+            </p>
           </div>
           <div className="field">
             <label htmlFor="expirationDate">Expiration date</label>
@@ -417,6 +638,13 @@ export default function CoveredCallPage() {
             <h3>Total income</h3>
             <p>{formatCurrency(calculations.premiumTotal + calculations.dividendsTotal)}</p>
             <span>{formatCurrency(calculations.dividendsTotal)} dividends expected</span>
+          </article>
+          <article className={`result-card result-card--quality-${calculations.tradeQuality.label.toLowerCase()}`}>
+            <h3>Trade quality</h3>
+            <p>{calculations.tradeQuality.label}</p>
+            <span>
+              {calculations.tradeQuality.score}/100 · {calculations.tradeQualitySubtitle || "Balanced risk/reward mix"}
+            </span>
           </article>
         </div>
       </section>
