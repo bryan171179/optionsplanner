@@ -66,6 +66,9 @@ const evaluateTradeQuality = ({
     addFactor(-4, "Upside is tightly capped");
   } else if (upsideCapPct <= 3) {
     addFactor(-2, "Upside is somewhat capped");
+    addFactor(-10, "Upside is very capped");
+  } else if (upsideCapPct <= 3) {
+    addFactor(-5, "Upside is capped");
   } else if (upsideCapPct <= 7) {
     addFactor(5, "Upside room is fair");
   } else {
@@ -96,6 +99,14 @@ const evaluateTradeQuality = ({
   } else {
     addFactor(-5, "IV is extremely elevated");
     hasElevatedRiskWarning = true;
+  } else if (totalReturnPct <= 15) {
+    // neutral
+  } else if (totalReturnPct <= 30) {
+    addFactor(5, "Return potential is decent");
+  } else if (totalReturnPct <= 50) {
+    addFactor(10, "Return potential is strong");
+  } else {
+    addFactor(15, "Return potential is exceptional");
   }
 
   const clampedScore = Math.max(0, Math.min(100, score));
@@ -455,6 +466,20 @@ export default function CoveredCallPage() {
                 required
               />
             </div>
+          </div>
+          <div className="field">
+            <label htmlFor="impliedVolatility">Implied volatility</label>
+            <input
+              id="impliedVolatility"
+              name="impliedVolatility"
+              type="range"
+              min="5"
+              max="100"
+              step="1"
+              value={formState.impliedVolatility}
+              onChange={handleChange("impliedVolatility")}
+            />
+            <p className="helper-text">{calculations.safeImpliedVolatility.toFixed(0)}%</p>
           </div>
           <div className="field">
             <label htmlFor="strikePrice">Call strike price</label>
