@@ -99,7 +99,9 @@ const evaluateTradeQuality = ({
   } else {
     addFactor(-5, "IV is extremely elevated");
     hasElevatedRiskWarning = true;
-  } else if (totalReturnPct <= 15) {
+  }
+
+  if (totalReturnPct <= 15) {
     // neutral
   } else if (totalReturnPct <= 30) {
     addFactor(5, "Return potential is decent");
@@ -468,20 +470,6 @@ export default function CoveredCallPage() {
             </div>
           </div>
           <div className="field">
-            <label htmlFor="impliedVolatility">Implied volatility</label>
-            <input
-              id="impliedVolatility"
-              name="impliedVolatility"
-              type="range"
-              min="5"
-              max="100"
-              step="1"
-              value={formState.impliedVolatility}
-              onChange={handleChange("impliedVolatility")}
-            />
-            <p className="helper-text">{calculations.safeImpliedVolatility.toFixed(0)}%</p>
-          </div>
-          <div className="field">
             <label htmlFor="strikePrice">Call strike price</label>
             <div className="input-wrap">
               <span>$</span>
@@ -568,6 +556,7 @@ export default function CoveredCallPage() {
           <div className="field">
             <label htmlFor="impliedVolatility">Implied volatility</label>
             <input
+              className="range-input"
               id="impliedVolatility"
               name="impliedVolatility"
               type="range"
@@ -578,6 +567,10 @@ export default function CoveredCallPage() {
               onChange={handleChange("impliedVolatility")}
             />
             <p className="helper-text">{calculations.safeImpliedVolatility.toFixed(0)}%</p>
+            <p className="helper-text helper-text--range">
+              <span>{calculations.safeImpliedVolatility.toFixed(0)}%</span>
+              <span>Higher IV can increase premium and risk</span>
+            </p>
           </div>
         </form>
         <button className="text-button" type="button" onClick={handleReset}>

@@ -154,6 +154,51 @@ input[type="range"]::-moz-range-track {
   height: 10px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--accent) 20%, #eef2ff);
+.helper-text {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.helper-text--range {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.range-input {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #9db4ff 0%, #3b5bfd 100%);
+  cursor: pointer;
+}
+
+.range-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+  background: #2847e8;
+  box-shadow: 0 0 0 3px rgba(59, 91, 253, 0.2);
+}
+
+.range-input::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+  background: #2847e8;
+  box-shadow: 0 0 0 3px rgba(59, 91, 253, 0.2);
+}
+
+.range-input::-moz-range-track {
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #9db4ff 0%, #3b5bfd 100%);
 }
 
 .primary {
@@ -333,6 +378,11 @@ input[type="range"]::-moz-range-track {
 
   .result-card span {
     font-size: 0.84rem;
+  }
+
+  .helper-text--range {
+    flex-direction: column;
+    gap: 4px;
   }
 }
 
