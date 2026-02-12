@@ -134,7 +134,7 @@ input {
 .range-input {
   -webkit-appearance: none;
   appearance: none;
-  height: 6px;
+  height: 10px;
   border-radius: 999px;
   background: linear-gradient(90deg, #9db4ff 0%, #3b5bfd 100%);
   cursor: pointer;
@@ -161,7 +161,7 @@ input {
 }
 
 .range-input::-moz-range-track {
-  height: 6px;
+  height: 10px;
   border-radius: 999px;
   background: linear-gradient(90deg, #9db4ff 0%, #3b5bfd 100%);
 }
