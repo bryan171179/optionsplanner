@@ -470,20 +470,6 @@ export default function CoveredCallPage() {
             </div>
           </div>
           <div className="field">
-            <label htmlFor="impliedVolatility">Implied volatility</label>
-            <input
-              id="impliedVolatility"
-              name="impliedVolatility"
-              type="range"
-              min="5"
-              max="100"
-              step="1"
-              value={formState.impliedVolatility}
-              onChange={handleChange("impliedVolatility")}
-            />
-            <p className="helper-text">{calculations.safeImpliedVolatility.toFixed(0)}%</p>
-          </div>
-          <div className="field">
             <label htmlFor="strikePrice">Call strike price</label>
             <div className="input-wrap">
               <span>$</span>
@@ -565,6 +551,24 @@ export default function CoveredCallPage() {
             />
             <p className="helper-text">
               {calculations.daysUntilExpiration} days until expiration
+            </p>
+          </div>
+          <div className="field">
+            <label htmlFor="impliedVolatility">Implied volatility</label>
+            <input
+              className="range-input"
+              id="impliedVolatility"
+              name="impliedVolatility"
+              type="range"
+              min="5"
+              max="100"
+              step="1"
+              value={formState.impliedVolatility}
+              onChange={handleChange("impliedVolatility")}
+            />
+            <p className="helper-text helper-text--range">
+              <span>{calculations.safeImpliedVolatility.toFixed(0)}%</span>
+              <span>Higher IV can increase premium and risk</span>
             </p>
           </div>
         </form>
