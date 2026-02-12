@@ -63,9 +63,6 @@ const evaluateTradeQuality = ({
   }
 
   if (upsideCapPct < 1) {
-    addFactor(-4, "Upside is tightly capped");
-  } else if (upsideCapPct <= 3) {
-    addFactor(-2, "Upside is somewhat capped");
     addFactor(-10, "Upside is very capped");
   } else if (upsideCapPct <= 3) {
     addFactor(-5, "Upside is capped");
