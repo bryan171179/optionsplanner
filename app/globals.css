@@ -119,6 +119,43 @@ input {
   background: transparent;
 }
 
+input[type="range"] {
+  appearance: none;
+  -webkit-appearance: none;
+  height: 10px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent) 25%, #d0d5dd);
+  background: color-mix(in srgb, var(--accent) 20%, #eef2ff);
+  cursor: pointer;
+  padding: 0;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid #fff;
+  box-shadow: 0 2px 8px rgba(16, 24, 40, 0.25);
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid #fff;
+  box-shadow: 0 2px 8px rgba(16, 24, 40, 0.25);
+}
+
+input[type="range"]::-moz-range-track {
+  height: 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 20%, #eef2ff);
+}
+
 .primary {
   background: var(--accent);
   color: white;
@@ -220,6 +257,26 @@ input {
 .result-card--cost {
   --card-accent: #344054;
   --card-tint: #f2f4f7;
+}
+
+.result-card--quality-strong {
+  --card-accent: #039855;
+  --card-tint: #ecfdf3;
+}
+
+.result-card--quality-reasonable {
+  --card-accent: #155eef;
+  --card-tint: #eff4ff;
+}
+
+.result-card--quality-borderline {
+  --card-accent: #f79009;
+  --card-tint: #fffaeb;
+}
+
+.result-card--quality-weak {
+  --card-accent: #d92d20;
+  --card-tint: #fef3f2;
 }
 
 .notes {
