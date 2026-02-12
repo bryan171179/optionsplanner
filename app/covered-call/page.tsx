@@ -99,7 +99,9 @@ const evaluateTradeQuality = ({
   } else {
     addFactor(-5, "IV is extremely elevated");
     hasElevatedRiskWarning = true;
-  } else if (totalReturnPct <= 15) {
+  }
+
+  if (totalReturnPct <= 15) {
     // neutral
   } else if (totalReturnPct <= 30) {
     addFactor(5, "Return potential is decent");
