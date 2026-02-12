@@ -4,3 +4,8 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Generated icon assets
+public/apple-touch-icon.png
+public/icon-192.png
+public/icon-512.png

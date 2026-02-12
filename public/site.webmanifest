@@ -1,20 +1,22 @@
 {
   "name": "Options Planner",
-  "short_name": "Options Planner",
+  "short_name": "Options",
   "description": "Plan covered call strategies without external dependencies.",
+  "display": "standalone",
+  "start_url": "/covered-call",
+  "scope": "/",
+  "theme_color": "#2c7082",
+  "background_color": "#e3eff6",
   "icons": [
     {
-      "src": "/android-chrome-192x192.png",
+      "src": "/icon-192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/android-chrome-512x512.png",
+      "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png"
     }
-  ],
-  "theme_color": "#2c7082",
-  "background_color": "#e3eff6",
-  "display": "standalone"
+  ]
 }
