@@ -6,8 +6,8 @@ export const metadata: Metadata = {
   description: "Plan covered call strategies without external dependencies.",
   manifest: "/site.webmanifest",
   icons: {
-    icon: "/favicon.ico",
-    apple: "/apple-touch-icon.png",
+    icon: [{ url: "/icon-192.png", type: "image/png" }],
+    apple: [{ url: "/apple-touch-icon.png" }],
   },
 };
 
@@ -18,6 +18,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="Options Planner" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+      </head>
       <body>{children}</body>
     </html>
   );
