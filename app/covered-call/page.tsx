@@ -563,6 +563,7 @@ export default function CoveredCallPage() {
               value={formState.impliedVolatility}
               onChange={handleChange("impliedVolatility")}
             />
+            <p className="helper-text">{calculations.safeImpliedVolatility.toFixed(0)}%</p>
             <p className="helper-text helper-text--range">
               <span>{calculations.safeImpliedVolatility.toFixed(0)}%</span>
               <span>Higher IV can increase premium and risk</span>
