@@ -599,7 +599,10 @@ export default function CoveredCallPage() {
           <article className="result-card result-card--cap">
             <h3>Upside cap</h3>
             <p>{formatCurrency(calculations.safeStrikePrice)}</p>
-            <span>{formatCurrency(calculations.upsideCapValue)} above spot</span>
+            <div className="result-card-meta">
+              <span>{formatCurrency(calculations.upsideCapValue)} above spot</span>
+              <span>{formatPercentValue(calculations.upsideCapPct)} to strike</span>
+            </div>
           </article>
           <article className="result-card result-card--return">
             <h3>Total return</h3>
