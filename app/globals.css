@@ -248,6 +248,11 @@ input[type="date"]::-webkit-datetime-edit {
   font-size: 0.9rem;
 }
 
+.result-card-meta {
+  display: grid;
+  gap: 2px;
+}
+
 .result-card--profit {
   --card-accent: #12b76a;
   --card-tint: #ecfdf3;
