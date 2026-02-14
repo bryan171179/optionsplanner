@@ -785,21 +785,21 @@ export default function CoveredCallPage() {
               <span>Higher IV can increase premium and risk</span>
             </p>
           </div>
+          <div className="planner-controls">
+            <button className="text-button" type="button" onClick={handleReset}>
+              Reset
+            </button>
+            <button
+              className="text-button"
+              type="button"
+              onClick={() => setIsAdvancedTechnicalsOpen((prev) => !prev)}
+              aria-expanded={isAdvancedTechnicalsOpen}
+              aria-controls="advanced-technicals"
+            >
+              {isAdvancedTechnicalsOpen ? "▾" : "▸"} Advanced technicals
+            </button>
+          </div>
         </form>
-        <div className="planner-controls">
-          <button className="text-button" type="button" onClick={handleReset}>
-            Reset
-          </button>
-          <button
-            className="text-button"
-            type="button"
-            onClick={() => setIsAdvancedTechnicalsOpen((prev) => !prev)}
-            aria-expanded={isAdvancedTechnicalsOpen}
-            aria-controls="advanced-technicals"
-          >
-            {isAdvancedTechnicalsOpen ? "▾" : "▸"} Advanced technicals
-          </button>
-        </div>
 
         {isAdvancedTechnicalsOpen ? (
           <section id="advanced-technicals" className="advanced-technicals">
