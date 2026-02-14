@@ -790,7 +790,12 @@ export default function CoveredCallPage() {
           <section id="advanced-technicals" className="advanced-technicals">
             <div className="advanced-technicals-grid">
               <div className="field">
-                <label htmlFor="atr14">ATR (14)</label>
+                <label
+                  htmlFor="atr14"
+                  title="Average True Range over 14 periods. Used to gauge recent price volatility and position sizing risk."
+                >
+                  ATR (14)
+                </label>
                 <input
                   className="technical-number-input"
                   id="atr14"
@@ -802,7 +807,12 @@ export default function CoveredCallPage() {
                 />
               </div>
               <div className="field">
-                <label htmlFor="adx14">ADX (14)</label>
+                <label
+                  htmlFor="adx14"
+                  title="Average Directional Index over 14 periods. Used to measure trend strength, regardless of trend direction."
+                >
+                  ADX (14)
+                </label>
                 <input
                   className="technical-number-input"
                   id="adx14"
@@ -814,7 +824,12 @@ export default function CoveredCallPage() {
                 />
               </div>
               <div className="field">
-                <label htmlFor="rsi14">RSI (14)</label>
+                <label
+                  htmlFor="rsi14"
+                  title="Relative Strength Index over 14 periods. Used to spot momentum extremes and potential overbought or oversold conditions."
+                >
+                  RSI (14)
+                </label>
                 <input
                   className="technical-number-input"
                   id="rsi14"
