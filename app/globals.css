@@ -87,6 +87,24 @@ h1 {
   box-shadow: var(--shadow);
 }
 
+.form-row {
+  display: grid;
+  gap: 16px;
+}
+
+.form-row--split {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+
+.form-row--split .field {
+  grid-template-rows: minmax(1.25rem, auto) auto;
+}
+
+.form-row--split .input-wrap {
+  min-height: 44px;
+}
+
 .field {
   display: grid;
   gap: 8px;
@@ -483,5 +501,11 @@ input[type="date"]::-webkit-datetime-edit {
   .result-card {
     min-height: 136px;
     padding: 14px;
+  }
+}
+
+@media (max-width: 640px) {
+  .form-row--split {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

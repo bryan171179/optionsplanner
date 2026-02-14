@@ -643,47 +643,67 @@ export default function CoveredCallPage() {
 
       <section className="planner">
         <form className="planner-form">
-          <div className="field">
-            <label htmlFor="symbol">Stock symbol</label>
-            <input
-              id="symbol"
-              name="symbol"
-              type="text"
-              value={formState.symbol}
-              onChange={handleChange("symbol")}
-              maxLength={10}
-              placeholder="e.g. AAPL"
-              autoCapitalize="characters"
-            />
-          </div>
-          <div className="field">
-            <label htmlFor="stockPrice">Current stock price</label>
-            <div className="input-wrap">
-              <span>$</span>
-              <input
-                id="stockPrice"
-                name="stockPrice"
-                type="number"
-                step="0.01"
-                value={formState.stockPrice}
-                onChange={handleChange("stockPrice")}
-                required
-              />
+          <div className="form-row form-row--split">
+            <div className="field">
+              <label htmlFor="symbol">Stock symbol</label>
+              <div className="input-wrap">
+                <input
+                  id="symbol"
+                  name="symbol"
+                  type="text"
+                  value={formState.symbol}
+                  onChange={handleChange("symbol")}
+                  maxLength={10}
+                  placeholder="e.g. AAPL"
+                  autoCapitalize="characters"
+                />
+              </div>
+            </div>
+            <div className="field">
+              <label htmlFor="shares">Shares owned</label>
+              <div className="input-wrap">
+                <input
+                  id="shares"
+                  name="shares"
+                  type="number"
+                  step="100"
+                  value={formState.shares}
+                  onChange={handleChange("shares")}
+                  required
+                />
+              </div>
             </div>
           </div>
-          <div className="field">
-            <label htmlFor="strikePrice">Call strike price</label>
-            <div className="input-wrap">
-              <span>$</span>
-              <input
-                id="strikePrice"
-                name="strikePrice"
-                type="number"
-                step="0.01"
-                value={formState.strikePrice}
-                onChange={handleChange("strikePrice")}
-                required
-              />
+          <div className="form-row form-row--split">
+            <div className="field">
+              <label htmlFor="stockPrice">Current price</label>
+              <div className="input-wrap">
+                <span>$</span>
+                <input
+                  id="stockPrice"
+                  name="stockPrice"
+                  type="number"
+                  step="0.01"
+                  value={formState.stockPrice}
+                  onChange={handleChange("stockPrice")}
+                  required
+                />
+              </div>
+            </div>
+            <div className="field">
+              <label htmlFor="strikePrice">Call strike price</label>
+              <div className="input-wrap">
+                <span>$</span>
+                <input
+                  id="strikePrice"
+                  name="strikePrice"
+                  type="number"
+                  step="0.01"
+                  value={formState.strikePrice}
+                  onChange={handleChange("strikePrice")}
+                  required
+                />
+              </div>
             </div>
           </div>
           <div className="field">
@@ -701,45 +721,37 @@ export default function CoveredCallPage() {
               />
             </div>
           </div>
-          <div className="field">
-            <label htmlFor="dividendPerShare">Dividend per share</label>
-            <div className="input-wrap">
-              <span>$</span>
-              <input
-                id="dividendPerShare"
-                name="dividendPerShare"
-                type="number"
-                step="0.01"
-                value={formState.dividendPerShare}
-                onChange={handleChange("dividendPerShare")}
-                required
-              />
+          <div className="form-row form-row--split">
+            <div className="field">
+              <label htmlFor="dividendPerShare">Dividend per share</label>
+              <div className="input-wrap">
+                <span>$</span>
+                <input
+                  id="dividendPerShare"
+                  name="dividendPerShare"
+                  type="number"
+                  step="0.01"
+                  value={formState.dividendPerShare}
+                  onChange={handleChange("dividendPerShare")}
+                  required
+                />
+              </div>
             </div>
-          </div>
-          <div className="field">
-            <label htmlFor="dividendsExpected">Dividends expected</label>
-            <input
-              id="dividendsExpected"
-              name="dividendsExpected"
-              type="number"
-              step="1"
-              min="0"
-              value={formState.dividendsExpected}
-              onChange={handleChange("dividendsExpected")}
-              required
-            />
-          </div>
-          <div className="field">
-            <label htmlFor="shares">Shares owned</label>
-            <input
-              id="shares"
-              name="shares"
-              type="number"
-              step="100"
-              value={formState.shares}
-              onChange={handleChange("shares")}
-              required
-            />
+            <div className="field">
+              <label htmlFor="dividendsExpected">Total dividends</label>
+              <div className="input-wrap">
+                <input
+                  id="dividendsExpected"
+                  name="dividendsExpected"
+                  type="number"
+                  step="1"
+                  min="0"
+                  value={formState.dividendsExpected}
+                  onChange={handleChange("dividendsExpected")}
+                  required
+                />
+              </div>
+            </div>
           </div>
           <div className="field">
             <label htmlFor="expirationDate">Expiration date</label>
