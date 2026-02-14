@@ -997,7 +997,10 @@ export default function CoveredCallPage() {
           <article className="result-card result-card--income">
             <h3>Total income</h3>
             <p>{formatCurrency(calculations.premiumTotal + calculations.dividendsTotal)}</p>
-            <span>{formatCurrency(calculations.dividendsTotal)} dividends expected</span>
+            <div className="result-card-meta">
+              <span>{formatCurrency(calculations.premiumTotal)} premium</span>
+              <span>{formatCurrency(calculations.dividendsTotal)} dividends expected</span>
+            </div>
           </article>
           <article className={`result-card result-card--quality-${calculations.tradeQuality.label.toLowerCase()}`}>
             <h3>Trade quality</h3>
