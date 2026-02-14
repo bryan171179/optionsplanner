@@ -867,6 +867,7 @@ export default function CoveredCallPage() {
                   value={formState.adx14}
                   onChange={handleChange("adx14")}
                 />
+                <p className="helper-text">Range from 0 (weak) to 100 (strong).</p>
               </div>
               <div className="field">
                 <div className="label-with-tooltip">
@@ -899,6 +900,7 @@ export default function CoveredCallPage() {
                   value={formState.rsi14}
                   onChange={handleChange("rsi14")}
                 />
+                <p className="helper-text">&lt;30 oversold, &gt;70 overbought.</p>
               </div>
               <div className="field">
                 <label htmlFor="ma20">20-day MA</label>
