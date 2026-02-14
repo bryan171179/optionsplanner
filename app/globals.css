@@ -105,6 +105,7 @@ h1 {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-wrap: wrap;
 }
 
 .tooltip-hint {
@@ -115,11 +116,22 @@ h1 {
   height: 1rem;
   border-radius: 50%;
   border: 1px solid var(--border);
+  background: #fff;
   color: var(--muted);
   font-size: 0.75rem;
   font-weight: 700;
   line-height: 1;
-  cursor: help;
+  cursor: pointer;
+  padding: 0;
+}
+
+.inline-tooltip {
+  margin: 0;
+  width: 100%;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 500;
+  line-height: 1.4;
 }
 .input-wrap {
   display: flex;
