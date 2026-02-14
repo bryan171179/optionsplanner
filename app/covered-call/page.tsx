@@ -352,6 +352,9 @@ export default function CoveredCallPage() {
   const skipNextSave = useRef(false);
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isAdvancedTechnicalsOpen, setIsAdvancedTechnicalsOpen] = useState(false);
+  const [activeTechnicalTooltip, setActiveTechnicalTooltip] = useState<
+    "atr14" | "adx14" | "rsi14" | null
+  >(null);
 
   const calculations = useMemo(() => {
     const {
@@ -790,13 +793,27 @@ export default function CoveredCallPage() {
           <section id="advanced-technicals" className="advanced-technicals">
             <div className="advanced-technicals-grid">
               <div className="field">
-                <label
-                  className="label-with-tooltip"
-                  htmlFor="atr14"
-                  title="Average True Range over 14 periods. Used to gauge recent price volatility and position sizing risk."
-                >
-                  ATR (14) <span className="tooltip-hint" aria-hidden="true">?</span>
-                </label>
+                <div className="label-with-tooltip">
+                  <label htmlFor="atr14">ATR (14)</label>
+                  <button
+                    className="tooltip-hint"
+                    type="button"
+                    aria-label="What is ATR (14)?"
+                    aria-expanded={activeTechnicalTooltip === "atr14"}
+                    aria-controls="atr14-tooltip"
+                    onClick={() =>
+                      setActiveTechnicalTooltip((prev) => (prev === "atr14" ? null : "atr14"))
+                    }
+                  >
+                    ?
+                  </button>
+                  {activeTechnicalTooltip === "atr14" ? (
+                    <p id="atr14-tooltip" role="tooltip" className="inline-tooltip">
+                      Average True Range over 14 periods. Used to gauge recent price
+                      volatility and position sizing risk.
+                    </p>
+                  ) : null}
+                </div>
                 <input
                   className="technical-number-input"
                   id="atr14"
@@ -808,13 +825,27 @@ export default function CoveredCallPage() {
                 />
               </div>
               <div className="field">
-                <label
-                  className="label-with-tooltip"
-                  htmlFor="adx14"
-                  title="Average Directional Index over 14 periods. Used to measure trend strength, regardless of trend direction."
-                >
-                  ADX (14) <span className="tooltip-hint" aria-hidden="true">?</span>
-                </label>
+                <div className="label-with-tooltip">
+                  <label htmlFor="adx14">ADX (14)</label>
+                  <button
+                    className="tooltip-hint"
+                    type="button"
+                    aria-label="What is ADX (14)?"
+                    aria-expanded={activeTechnicalTooltip === "adx14"}
+                    aria-controls="adx14-tooltip"
+                    onClick={() =>
+                      setActiveTechnicalTooltip((prev) => (prev === "adx14" ? null : "adx14"))
+                    }
+                  >
+                    ?
+                  </button>
+                  {activeTechnicalTooltip === "adx14" ? (
+                    <p id="adx14-tooltip" role="tooltip" className="inline-tooltip">
+                      Average Directional Index over 14 periods. Used to measure trend
+                      strength, regardless of trend direction.
+                    </p>
+                  ) : null}
+                </div>
                 <input
                   className="technical-number-input"
                   id="adx14"
@@ -826,13 +857,27 @@ export default function CoveredCallPage() {
                 />
               </div>
               <div className="field">
-                <label
-                  className="label-with-tooltip"
-                  htmlFor="rsi14"
-                  title="Relative Strength Index over 14 periods. Used to spot momentum extremes and potential overbought or oversold conditions."
-                >
-                  RSI (14) <span className="tooltip-hint" aria-hidden="true">?</span>
-                </label>
+                <div className="label-with-tooltip">
+                  <label htmlFor="rsi14">RSI (14)</label>
+                  <button
+                    className="tooltip-hint"
+                    type="button"
+                    aria-label="What is RSI (14)?"
+                    aria-expanded={activeTechnicalTooltip === "rsi14"}
+                    aria-controls="rsi14-tooltip"
+                    onClick={() =>
+                      setActiveTechnicalTooltip((prev) => (prev === "rsi14" ? null : "rsi14"))
+                    }
+                  >
+                    ?
+                  </button>
+                  {activeTechnicalTooltip === "rsi14" ? (
+                    <p id="rsi14-tooltip" role="tooltip" className="inline-tooltip">
+                      Relative Strength Index over 14 periods. Used to spot momentum
+                      extremes and potential overbought or oversold conditions.
+                    </p>
+                  ) : null}
+                </div>
                 <input
                   className="technical-number-input"
                   id="rsi14"
