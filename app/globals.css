@@ -197,6 +197,80 @@ input[type="date"]::-webkit-datetime-edit {
   justify-self: start;
 }
 
+
+.planner-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.advanced-technicals {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 18px;
+  display: grid;
+  gap: 14px;
+}
+
+.advanced-technicals-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+  .advanced-technicals-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.advanced-technicals .field input {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: #fff;
+}
+
+
+.technical-number-input[type="number"]::-webkit-outer-spin-button,
+.technical-number-input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.technical-number-input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.technical-score-card {
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--border));
+  background: color-mix(in srgb, #eff4ff 55%, #ffffff);
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.technical-score-card h3 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+}
+
+.technical-score-card p {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.technical-score-card ul {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  color: var(--muted);
+  display: grid;
+  gap: 4px;
+}
+
 .results {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

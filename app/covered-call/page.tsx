@@ -19,6 +19,12 @@ type TradeQuality = {
   hasElevatedRiskWarning: boolean;
 };
 
+type TechnicalScore = {
+  score: number;
+  grade: "A" | "B" | "C" | "D" | "F";
+  notes: string[];
+};
+
 const evaluateTradeQuality = ({
   premiumPerDayPct,
   downsideToBreakEvenPct,
@@ -157,6 +163,12 @@ const getDefaultFormState = () => {
     shares: "100",
     impliedVolatility: "30",
     expirationDate: formatDateInput(defaultExpiration),
+    atr14: "",
+    adx14: "",
+    rsi14: "",
+    ma20: "",
+    ma50: "",
+    ma200: "",
   };
 };
 
@@ -172,6 +184,12 @@ const getResetFormState = () => ({
   shares: "0",
   impliedVolatility: "30",
   expirationDate: formatDateInput(new Date()),
+  atr14: "",
+  adx14: "",
+  rsi14: "",
+  ma20: "",
+  ma50: "",
+  ma200: "",
 });
 
 const calculateDaysUntilExpiration = (expirationDate: string) => {
@@ -187,6 +205,144 @@ const calculateDaysUntilExpiration = (expirationDate: string) => {
   return Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
 };
 
+const getTechnicalGrade = (score: number): TechnicalScore["grade"] => {
+  if (score >= 85) return "A";
+  if (score >= 70) return "B";
+  if (score >= 55) return "C";
+  if (score >= 40) return "D";
+  return "F";
+};
+
+const evaluateTechnicalScore = ({
+  stockPrice,
+  atr,
+  adx,
+  rsi,
+  ma20,
+  ma50,
+  ma200,
+}: {
+  stockPrice: number;
+  atr: number | null;
+  adx: number | null;
+  rsi: number | null;
+  ma20: number | null;
+  ma50: number | null;
+  ma200: number | null;
+}): TechnicalScore | null => {
+  const hasAtLeastOneMa = ma20 !== null || ma50 !== null || ma200 !== null;
+  if (rsi === null || adx === null || !hasAtLeastOneMa || stockPrice <= 0) {
+    return null;
+  }
+
+  let rsiScore = 0;
+  let adxScore = 0;
+  let maScore = 0;
+  let atrScore = 0;
+
+  let momentumNote = "";
+  if (rsi >= 45 && rsi <= 60) {
+    rsiScore = 30;
+    momentumNote = `Momentum is balanced (RSI ${rsi.toFixed(1)})`;
+  } else if (rsi > 60 && rsi <= 70) {
+    rsiScore = 22;
+    momentumNote = `Momentum is strong but getting extended (RSI ${rsi.toFixed(1)})`;
+  } else if (rsi >= 30 && rsi < 45) {
+    rsiScore = 18;
+    momentumNote = `Momentum is soft but not oversold (RSI ${rsi.toFixed(1)})`;
+  } else if (rsi > 70 && rsi <= 80) {
+    rsiScore = 12;
+    momentumNote = `Overbought risk is elevated (RSI ${rsi.toFixed(1)})`;
+  } else if (rsi >= 20 && rsi < 30) {
+    rsiScore = 14;
+    momentumNote = `Oversold bounce potential exists (RSI ${rsi.toFixed(1)})`;
+  } else if (rsi > 80) {
+    rsiScore = 6;
+    momentumNote = `Momentum is extremely overbought (RSI ${rsi.toFixed(1)})`;
+  } else {
+    rsiScore = 8;
+    momentumNote = `Momentum is deeply oversold (RSI ${rsi.toFixed(1)})`;
+  }
+
+  let trendStrengthNote = "";
+  if (adx < 15) {
+    adxScore = 6;
+    trendStrengthNote = `Trend strength is weak (ADX ${adx.toFixed(1)})`;
+  } else if (adx < 20) {
+    adxScore = 12;
+    trendStrengthNote = `Trend strength is building (ADX ${adx.toFixed(1)})`;
+  } else if (adx < 25) {
+    adxScore = 18;
+    trendStrengthNote = `Trend strength is moderate (ADX ${adx.toFixed(1)})`;
+  } else if (adx < 35) {
+    adxScore = 25;
+    trendStrengthNote = `Trend strength is strong (ADX ${adx.toFixed(1)})`;
+  } else if (adx < 45) {
+    adxScore = 22;
+    trendStrengthNote = `Trend is very strong, but late-cycle risk exists (ADX ${adx.toFixed(1)})`;
+  } else {
+    adxScore = 18;
+    trendStrengthNote = `Trend is extreme with reversal risk (ADX ${adx.toFixed(1)})`;
+  }
+
+  if (ma200 !== null) {
+    maScore += stockPrice > ma200 ? 10 : 2;
+  }
+  if (ma50 !== null) {
+    maScore += stockPrice > ma50 ? 8 : 2;
+  }
+  if (ma20 !== null) {
+    maScore += stockPrice > ma20 ? 6 : 2;
+  }
+
+  let alignmentNote: string | null = null;
+  if (ma20 !== null && ma50 !== null && ma200 !== null) {
+    if (ma20 > ma50 && ma50 > ma200) {
+      maScore += 11;
+      alignmentNote = "Moving averages are bullishly aligned (20 > 50 > 200)";
+    } else if (ma20 < ma50 && ma50 < ma200) {
+      alignmentNote = "Moving averages are bearishly aligned (20 < 50 < 200)";
+    } else {
+      maScore += 5;
+      alignmentNote = "Moving averages show mixed trend alignment";
+    }
+  }
+
+  maScore = Math.min(35, maScore);
+
+  let volatilityNote: string | null = null;
+  if (atr !== null) {
+    const atrPct = (atr / stockPrice) * 100;
+    if (atrPct < 1) {
+      atrScore = 10;
+      volatilityNote = `Volatility is stable (ATR ${atrPct.toFixed(2)}% of price)`;
+    } else if (atrPct < 2) {
+      atrScore = 8;
+      volatilityNote = `Volatility is controlled (ATR ${atrPct.toFixed(2)}% of price)`;
+    } else if (atrPct < 3.5) {
+      atrScore = 5;
+      volatilityNote = `Volatility is moderate (ATR ${atrPct.toFixed(2)}% of price)`;
+    } else if (atrPct < 5) {
+      atrScore = 3;
+      volatilityNote = `Volatility is elevated (ATR ${atrPct.toFixed(2)}% of price)`;
+    } else {
+      atrScore = 1;
+      volatilityNote = `Volatility is high (ATR ${atrPct.toFixed(2)}% of price)`;
+    }
+  }
+
+  const score = Math.max(0, Math.min(100, rsiScore + adxScore + maScore + atrScore));
+  const notes = [trendStrengthNote, momentumNote, alignmentNote, volatilityNote].filter(
+    (note): note is string => Boolean(note),
+  );
+
+  return {
+    score,
+    grade: getTechnicalGrade(score),
+    notes: notes.slice(0, 4),
+  };
+};
+
 export default function CoveredCallPage() {
   const defaultFormStateRef = useRef<FormState>(getDefaultFormState());
   const [formState, setFormState] = useState<FormState>(
@@ -195,6 +351,7 @@ export default function CoveredCallPage() {
   const hasHydrated = useRef(false);
   const skipNextSave = useRef(false);
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [isAdvancedTechnicalsOpen, setIsAdvancedTechnicalsOpen] = useState(false);
 
   const calculations = useMemo(() => {
     const {
@@ -311,6 +468,34 @@ export default function CoveredCallPage() {
     };
   }, [formState]);
 
+  const technicalScore = useMemo(() => {
+    const toNullableNumber = (value: string) => {
+      if (!value.trim()) {
+        return null;
+      }
+      const parsed = Number.parseFloat(value);
+      return Number.isFinite(parsed) ? parsed : null;
+    };
+
+    return evaluateTechnicalScore({
+      stockPrice: calculations.safeStockPrice,
+      atr: toNullableNumber(formState.atr14),
+      adx: toNullableNumber(formState.adx14),
+      rsi: toNullableNumber(formState.rsi14),
+      ma20: toNullableNumber(formState.ma20),
+      ma50: toNullableNumber(formState.ma50),
+      ma200: toNullableNumber(formState.ma200),
+    });
+  }, [
+    calculations.safeStockPrice,
+    formState.adx14,
+    formState.atr14,
+    formState.ma20,
+    formState.ma200,
+    formState.ma50,
+    formState.rsi14,
+  ]);
+
   const handleChange = (field: keyof typeof formState) =>
     (event: React.ChangeEvent<HTMLInputElement>) => {
       setFormState((prev) => ({
@@ -358,6 +543,12 @@ export default function CoveredCallPage() {
         "dividendsExpected",
         "shares",
         "impliedVolatility",
+        "atr14",
+        "adx14",
+        "rsi14",
+        "ma20",
+        "ma50",
+        "ma200",
       ];
 
       if (typeof parsed?.symbol === "string") {
@@ -415,6 +606,17 @@ export default function CoveredCallPage() {
     };
   }, [formState]);
 
+  const handleResetTechnicals = () => {
+    setFormState((prev) => ({
+      ...prev,
+      atr14: "",
+      adx14: "",
+      rsi14: "",
+      ma20: "",
+      ma50: "",
+      ma200: "",
+    }));
+  };
 
   return (
     <main className="page">
@@ -569,9 +771,117 @@ export default function CoveredCallPage() {
             </p>
           </div>
         </form>
-        <button className="text-button" type="button" onClick={handleReset}>
-          Reset
-        </button>
+        <div className="planner-controls">
+          <button className="text-button" type="button" onClick={handleReset}>
+            Reset
+          </button>
+          <button
+            className="text-button"
+            type="button"
+            onClick={() => setIsAdvancedTechnicalsOpen((prev) => !prev)}
+            aria-expanded={isAdvancedTechnicalsOpen}
+            aria-controls="advanced-technicals"
+          >
+            {isAdvancedTechnicalsOpen ? "▾" : "▸"} Advanced technicals
+          </button>
+        </div>
+
+        {isAdvancedTechnicalsOpen ? (
+          <section id="advanced-technicals" className="advanced-technicals">
+            <div className="advanced-technicals-grid">
+              <div className="field">
+                <label htmlFor="atr14">ATR (14)</label>
+                <input
+                  className="technical-number-input"
+                  id="atr14"
+                  name="atr14"
+                  type="number"
+                  step="0.01"
+                  value={formState.atr14}
+                  onChange={handleChange("atr14")}
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="adx14">ADX (14)</label>
+                <input
+                  className="technical-number-input"
+                  id="adx14"
+                  name="adx14"
+                  type="number"
+                  step="0.01"
+                  value={formState.adx14}
+                  onChange={handleChange("adx14")}
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="rsi14">RSI (14)</label>
+                <input
+                  className="technical-number-input"
+                  id="rsi14"
+                  name="rsi14"
+                  type="number"
+                  step="0.01"
+                  value={formState.rsi14}
+                  onChange={handleChange("rsi14")}
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="ma20">20-day MA</label>
+                <input
+                  className="technical-number-input"
+                  id="ma20"
+                  name="ma20"
+                  type="number"
+                  step="0.01"
+                  value={formState.ma20}
+                  onChange={handleChange("ma20")}
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="ma50">50-day MA</label>
+                <input
+                  className="technical-number-input"
+                  id="ma50"
+                  name="ma50"
+                  type="number"
+                  step="0.01"
+                  value={formState.ma50}
+                  onChange={handleChange("ma50")}
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="ma200">200-day MA</label>
+                <input
+                  className="technical-number-input"
+                  id="ma200"
+                  name="ma200"
+                  type="number"
+                  step="0.01"
+                  value={formState.ma200}
+                  onChange={handleChange("ma200")}
+                />
+              </div>
+            </div>
+
+            <button className="text-button" type="button" onClick={handleResetTechnicals}>
+              Reset technicals
+            </button>
+
+            {technicalScore ? (
+              <article className="technical-score-card">
+                <h3>Technical score</h3>
+                <p>
+                  {technicalScore.grade} · {technicalScore.score.toFixed(0)}/100
+                </p>
+                <ul>
+                  {technicalScore.notes.map((note) => (
+                    <li key={note}>{note}</li>
+                  ))}
+                </ul>
+              </article>
+            ) : null}
+          </section>
+        ) : null}
 
         <div className="results" aria-live="polite">
           <article className="result-card result-card--profit">
